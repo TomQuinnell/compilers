@@ -286,11 +286,14 @@ func (s *Scanner) addTokenWithLiteral(kind d.TokenType, literal interface{}) {
 }
 
 func (s *Scanner) currentSlice() (string, error) {
+	if s.start >= len(s.source) {
+		return "", nil
+	}
 	return s.substring(s.start, s.current)
 }
 
 func (s *Scanner) substring(st int, end int) (string, error) {
-	if st < 0 || end >= len(s.source) {
+	if st < 0 || end > len(s.source) {
 		return "", fmt.Errorf("out of range access: %d %d", st, end)
 	}
 	return s.source[st:end], nil

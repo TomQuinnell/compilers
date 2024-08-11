@@ -22,23 +22,23 @@ var Keywords = map[string]TokenType{
 }
 
 type Token struct {
-	kind    TokenType
-	lexeme  string
-	literal interface{}
-	line    int
+	Kind    TokenType
+	Lexeme  string
+	Literal interface{}
+	Line    int
 }
 
 func NewToken(kind TokenType, lexeme string, literal interface{}, line int) *Token {
 	return &Token{
-		kind:    kind,
-		lexeme:  lexeme,
-		literal: literal,
-		line:    line,
+		Kind:    kind,
+		Lexeme:  lexeme,
+		Literal: literal,
+		Line:    line,
 	}
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("%s %s %s", t.kind, t.lexeme, t.literal)
+	return fmt.Sprintf("%s %s %s", t.Kind, t.Lexeme, t.Literal)
 }
 
 type TokenType int
