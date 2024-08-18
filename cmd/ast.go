@@ -13,10 +13,10 @@ import (
 
 func main() {
 	writeAst("Expr", []string{
-		"Unary    : Operator Token, Right Expr[R]",
-		"Binary   : Left Expr[R], Operator Token, Right Expr[R]",
-		"Literal  : Value fmt.Stringer",
-		"Grouping : Expression Expr[R]",
+		"Unary    : Operator *Token, Right Expr",
+		"Binary   : Left Expr, Operator *Token, Right Expr",
+		"Literal  : Value interface{}",
+		"Grouping : Expression Expr",
 	})
 }
 
@@ -30,7 +30,6 @@ func writeAst(baseName string, types []string) {
 	ret := ""
 
 	ret += "package domain\n"
-	ret += "\nimport \"fmt\"\n"
 
 	ret += defineInterface(baseName)
 	ret += defineTypes(baseName, types)
@@ -45,8 +44,8 @@ func writeAst(baseName string, types []string) {
 
 func defineInterface(name string) string {
 	return fmt.Sprintf(`
-type %s[R any] interface {
-	Accept(visitor %sVisitor[R]) R
+type %s interface {
+	Accept(visitor %sVisitor) interface{}
 }
 `, name, name)
 }
@@ -55,7 +54,7 @@ func defineTypes(name string, types []string) (str string) {
 	for _, t := range types {
 		splitType := strings.Split(t, ":")
 		fullTypeName := strings.Trim(splitType[0], " ") + name
-		str += fmt.Sprintf("\ntype %s[R any] struct {\n", fullTypeName)
+		str += fmt.Sprintf("\ntype %s struct {\n", fullTypeName)
 
 		fields := strings.Split(splitType[1], ", ")
 		for _, field := range fields {
@@ -65,7 +64,7 @@ func defineTypes(name string, types []string) (str string) {
 		str += "}\n"
 
 		str += fmt.Sprintf(`
-func (b %s[R]) Accept(visitor %sVisitor[R]) R {
+func (b %s) Accept(visitor %sVisitor) interface{} {
 	return visitor.Visit%s(b)
 }
 `, fullTypeName, name, fullTypeName)
@@ -74,11 +73,11 @@ func (b %s[R]) Accept(visitor %sVisitor[R]) R {
 }
 
 func defineVisitor(name string, types []string) (str string) {
-	str += fmt.Sprintf("\ntype %sVisitor[R any] interface {\n", name)
+	str += fmt.Sprintf("\ntype %sVisitor interface {\n", name)
 	for _, t := range types {
 		splitType := strings.Split(t, ":")
 		fullTypeName := strings.Trim(splitType[0], " ") + name
-		str += fmt.Sprintf("\tVisit%s(expr %s[R]) R\n", fullTypeName, fullTypeName)
+		str += fmt.Sprintf("\tVisit%s(expr %s) interface{}\n", fullTypeName, fullTypeName)
 	}
 	str += "}\n"
 	return str

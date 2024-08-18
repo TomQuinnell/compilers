@@ -3,7 +3,9 @@ package main
 //go:generate go run cmd/ast.go
 
 import (
+	"example/compilers/ast"
 	"example/compilers/lex"
+	"example/compilers/util"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -27,10 +29,14 @@ func main() {
 	tokens, err := scanner.Scan()
 
 	if err != nil {
-		log.Err(err).Msg("Failed to scan.")
+		log.Panic().Err(err).Msg("Failed to scan.")
 	}
 
-	for _, t := range tokens {
-		log.Info().Msg(t.String())
+	parser := ast.NewParser(tokens)
+	expr, err := parser.Parse()
+	if err != nil {
+		log.Panic().Err(err).Msg("Failed to parse.")
 	}
+
+	log.Info().Msg(util.ToString(ast.NewAstPrinter().Print(expr)))
 }

@@ -14,23 +14,23 @@ func TestPrinter(t *testing.T) {
 
 		printer := NewAstPrinter()
 
-		expr := d.BinaryExpr[string]{
-			Left: d.UnaryExpr[string]{
-				Operator: *d.NewToken(d.MINUS, "-", nil, 1),
-				Right: d.LiteralExpr[string]{
-					Value: d.IntStringer(123),
+		expr := d.BinaryExpr{
+			Left: d.UnaryExpr{
+				Operator: d.NewToken(d.MINUS, "-", nil, 1),
+				Right: d.LiteralExpr{
+					Value: 123,
 				},
 			},
-			Operator: *d.NewToken(d.STAR, "*", nil, 1),
-			Right: d.GroupingExpr[string]{
-				Expression: d.LiteralExpr[string]{
-					Value: d.FloatStringer(45.67),
+			Operator: d.NewToken(d.STAR, "*", nil, 1),
+			Right: d.GroupingExpr{
+				Expression: d.LiteralExpr{
+					Value: 45.67,
 				},
 			},
 		}
 		ret := printer.Print(expr)
 
-		expectedRet := "(* (- 123) (group 45.670000))"
+		expectedRet := "(* (- 123) (group 45.67))"
 		assert.Equal(expectedRet, ret)
 	})
 

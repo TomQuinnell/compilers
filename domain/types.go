@@ -2,18 +2,6 @@ package domain
 
 import "fmt"
 
-type IntStringer int
-
-func (i IntStringer) String() string {
-	return fmt.Sprintf("%d", i)
-}
-
-type FloatStringer float64
-
-func (i FloatStringer) String() string {
-	return fmt.Sprintf("%f", i)
-}
-
 var Keywords = map[string]TokenType{
 	"and":    AND,
 	"class":  CLASS,
@@ -50,7 +38,7 @@ func NewToken(kind TokenType, lexeme string, literal interface{}, line int) *Tok
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("%s %s %s", t.Kind, t.Lexeme, t.Literal)
+	return fmt.Sprintf("%s %s %v", t.Kind, t.Lexeme, t.Literal)
 }
 
 type TokenType int
