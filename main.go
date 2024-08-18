@@ -1,5 +1,7 @@
 package main
 
+//go:generate go run cmd/ast.go
+
 import (
 	"example/compilers/lex"
 	"os"

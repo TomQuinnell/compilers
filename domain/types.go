@@ -2,6 +2,18 @@ package domain
 
 import "fmt"
 
+type IntStringer int
+
+func (i IntStringer) String() string {
+	return fmt.Sprintf("%d", i)
+}
+
+type FloatStringer float64
+
+func (i FloatStringer) String() string {
+	return fmt.Sprintf("%f", i)
+}
+
 var Keywords = map[string]TokenType{
 	"and":    AND,
 	"class":  CLASS,
