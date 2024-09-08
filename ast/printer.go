@@ -14,26 +14,27 @@ func NewAstPrinter() *AstPrinter {
 }
 
 func (p *AstPrinter) Print(expr d.Expr) interface{} {
-	return expr.Accept(p)
+	v, _ := expr.Accept(p)
+	return v
 }
 
-func (p *AstPrinter) VisitBinaryExpr(expr d.BinaryExpr) interface{} {
-	return p.parenthesize(expr.Operator.Lexeme, expr.Left, expr.Right)
+func (p *AstPrinter) VisitBinaryExpr(expr d.BinaryExpr) (interface{}, error) {
+	return p.parenthesize(expr.Operator.Lexeme, expr.Left, expr.Right), nil
 }
 
-func (p *AstPrinter) VisitGroupingExpr(expr d.GroupingExpr) interface{} {
-	return p.parenthesize("group", expr.Expression)
+func (p *AstPrinter) VisitGroupingExpr(expr d.GroupingExpr) (interface{}, error) {
+	return p.parenthesize("group", expr.Expression), nil
 }
 
-func (p *AstPrinter) VisitLiteralExpr(expr d.LiteralExpr) interface{} {
+func (p *AstPrinter) VisitLiteralExpr(expr d.LiteralExpr) (interface{}, error) {
 	if expr.Value == nil {
-		return "nil"
+		return "nil", nil
 	}
-	return util.ToString(expr.Value)
+	return util.ToString(expr.Value), nil
 }
 
-func (p *AstPrinter) VisitUnaryExpr(expr d.UnaryExpr) interface{} {
-	return p.parenthesize(expr.Operator.Lexeme, expr.Right)
+func (p *AstPrinter) VisitUnaryExpr(expr d.UnaryExpr) (interface{}, error) {
+	return p.parenthesize(expr.Operator.Lexeme, expr.Right), nil
 }
 
 func (p *AstPrinter) parenthesize(name string, exprs ...d.Expr) string {
@@ -43,7 +44,8 @@ func (p *AstPrinter) parenthesize(name string, exprs ...d.Expr) string {
 	ret += name
 	for _, expr := range exprs {
 		ret += " "
-		ret += util.ToString(expr.Accept(p))
+		v, _ := expr.Accept(p)
+		ret += util.ToString(v)
 	}
 	ret += ")"
 

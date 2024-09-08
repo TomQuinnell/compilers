@@ -4,6 +4,7 @@ package main
 
 import (
 	"example/compilers/ast"
+	"example/compilers/eval"
 	"example/compilers/lex"
 	"example/compilers/util"
 	"os"
@@ -39,4 +40,12 @@ func main() {
 	}
 
 	log.Info().Msg(util.ToString(ast.NewAstPrinter().Print(expr)))
+
+	interpreter := eval.NewInterpreter()
+	v, err := interpreter.Interpret(expr)
+	if err != nil {
+		log.Panic().Err(err).Msg("Failed to interpret.")
+	}
+
+	log.Info().Msg(util.ToString(v))
 }

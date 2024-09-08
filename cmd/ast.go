@@ -45,7 +45,7 @@ func writeAst(baseName string, types []string) {
 func defineInterface(name string) string {
 	return fmt.Sprintf(`
 type %s interface {
-	Accept(visitor %sVisitor) interface{}
+	Accept(visitor %sVisitor) (interface{}, error)
 }
 `, name, name)
 }
@@ -64,7 +64,7 @@ func defineTypes(name string, types []string) (str string) {
 		str += "}\n"
 
 		str += fmt.Sprintf(`
-func (b %s) Accept(visitor %sVisitor) interface{} {
+func (b %s) Accept(visitor %sVisitor) (interface{}, error) {
 	return visitor.Visit%s(b)
 }
 `, fullTypeName, name, fullTypeName)
@@ -77,7 +77,7 @@ func defineVisitor(name string, types []string) (str string) {
 	for _, t := range types {
 		splitType := strings.Split(t, ":")
 		fullTypeName := strings.Trim(splitType[0], " ") + name
-		str += fmt.Sprintf("\tVisit%s(expr %s) interface{}\n", fullTypeName, fullTypeName)
+		str += fmt.Sprintf("\tVisit%s(expr %s) (interface{}, error)\n", fullTypeName, fullTypeName)
 	}
 	str += "}\n"
 	return str

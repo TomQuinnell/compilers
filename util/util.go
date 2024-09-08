@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	d "example/compilers/domain"
 	"fmt"
 )
@@ -75,4 +76,25 @@ func IsEqualExpr(e, o d.Expr) bool {
 	}
 
 	return false
+}
+
+func ToDouble(v interface{}) (float64, error) {
+	switch i := v.(type) {
+	case float64:
+		return i, nil
+	case float32:
+		return float64(i), nil
+	case int:
+		return float64(i), nil
+	case int8:
+		return float64(i), nil
+	case int16:
+		return float64(i), nil
+	case int32:
+		return float64(i), nil
+	case int64:
+		return float64(i), nil
+	}
+
+	return 0.0, errors.New("expected floaty value")
 }
