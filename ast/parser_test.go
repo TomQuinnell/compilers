@@ -145,7 +145,7 @@ func TestParse(t *testing.T) {
 	printToken := d.NewToken(d.PRINT, "print", nil, 0)
 
 	stmtTestCases := []ParseStmtTestCase{
-		{[]*d.Token{varToken, vToken, eqToken, one, semicolon}, d.VarStmt{Name: *d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: d.LiteralExpr{Value: 1}}},
+		{[]*d.Token{varToken, vToken, eqToken, one, semicolon}, d.VarStmt{Name: d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: d.LiteralExpr{Value: 1}}},
 		{[]*d.Token{printToken, one, semicolon}, d.PrintStmt{Expression: d.LiteralExpr{Value: 1}}},
 	}
 
@@ -160,6 +160,51 @@ func TestParse(t *testing.T) {
 			st := stmts[0]
 
 			assert.True(util.IsEqualStmt(c.expectedStmt, st))
+		})
+	}
+
+	openBlockToken := d.NewToken(d.LEFT_BRACE, "{", nil, 0)
+	closeBlockToken := d.NewToken(d.RIGHT_BRACE, "}", nil, 0)
+
+	t.Run("Parses assignment block", func(t *testing.T) {
+		assert := assert.New(t)
+
+		rawTokens := []*d.Token{
+			openBlockToken,
+			varToken, vToken, eqToken, one, semicolon,
+			vToken, eqToken, a, semicolon,
+			closeBlockToken,
+		}
+
+		stmts, err := NewParser(rawTokens).Parse()
+		assert.NoError(err)
+
+		assert.Len(stmts, 1)
+		st := stmts[0]
+
+		expectedStmts := []d.Stmt{
+			d.VarStmt{Name: vToken, Initializer: d.LiteralExpr{Value: 1}},
+			d.ExpressionStmt{Expression: d.AssignExpr{Name: vToken, Value: d.LiteralExpr{Value: "a"}}},
+		}
+		assert.True(util.IsEqualStmt(d.BlockStmt{Stmts: expectedStmts}, st))
+	})
+
+	openBracketToken := d.NewToken(d.LEFT_PAREN, "(", nil, 0)
+
+	errTestCases := []ParseStmtTestCase{
+		{[]*d.Token{varToken}, nil},
+		{[]*d.Token{varToken, vToken, eqToken, one}, nil},
+		// {[]*d.Token{printToken, one}, nil},
+		// {[]*d.Token{openBlockToken, one}, nil},
+		{[]*d.Token{openBracketToken, one}, nil},
+	}
+
+	for _, c := range errTestCases {
+		t.Run(fmt.Sprintf("Errors raw stmt tokens: %s", util.SprintTokens(c.rawTokens)), func(t *testing.T) {
+			assert := assert.New(t)
+
+			_, err := NewParser(c.rawTokens).Parse()
+			assert.Error(err)
 		})
 	}
 }

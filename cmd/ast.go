@@ -14,16 +14,18 @@ import (
 func main() {
 	writeAst("Expr", []string{
 		"Unary    : Operator *Token, Right Expr",
+		"Assign   : Name *Token, Value Expr",
 		"Binary   : Left Expr, Operator *Token, Right Expr",
 		"Literal  : Value interface{}",
 		"Grouping : Expression Expr",
-		"Variable : Name Token",
+		"Variable : Name *Token",
 	})
 
 	writeAst("Stmt", []string{
+		"Block      : Stmts []Stmt",
 		"Expression : Expression Expr",
 		"Print      : Expression Expr",
-		"Var        : Name Token, Initializer Expr",
+		"Var        : Name *Token, Initializer Expr",
 	})
 }
 

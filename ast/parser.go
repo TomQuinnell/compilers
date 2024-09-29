@@ -79,7 +79,7 @@ func (p *Parser) parseVarDeclaration() (d.Stmt, error) {
 	}
 
 	return d.VarStmt{
-		Name:        *name,
+		Name:        name,
 		Initializer: init,
 	}, nil
 }
@@ -87,6 +87,15 @@ func (p *Parser) parseVarDeclaration() (d.Stmt, error) {
 func (p *Parser) parseStatement() (d.Stmt, error) {
 	if p.match(d.PRINT) {
 		return p.parsePrintStatement()
+	}
+	if p.match(d.LEFT_BRACE) {
+		stmts, err := p.parseBlock()
+		if err != nil {
+			return nil, err
+		}
+		return d.BlockStmt{
+			Stmts: stmts,
+		}, nil
 	}
 
 	return p.parseExpressionStmt()
@@ -105,6 +114,23 @@ func (p *Parser) parsePrintStatement() (d.Stmt, error) {
 	}, nil
 }
 
+func (p *Parser) parseBlock() ([]d.Stmt, error) {
+	stmts := make([]d.Stmt, 0)
+
+	for !p.check(d.RIGHT_BRACE) && !p.isAtEnd() {
+		s, err := p.parseDeclaration()
+		if err != nil {
+			return nil, err
+		}
+
+		stmts = append(stmts, s)
+	}
+
+	p.consume(d.RIGHT_BRACE, "Expect '}' after block.")
+
+	return stmts, nil
+}
+
 func (p *Parser) parseExpressionStmt() (d.Stmt, error) {
 	ex, err := p.parseExpression()
 	if err != nil {
@@ -119,7 +145,34 @@ func (p *Parser) parseExpressionStmt() (d.Stmt, error) {
 }
 
 func (p *Parser) parseExpression() (d.Expr, error) {
-	return p.parseEquality()
+	return p.parseAssignment()
+}
+
+func (p *Parser) parseAssignment() (d.Expr, error) {
+	eqExpr, err := p.parseEquality()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.match(d.EQUAL) {
+		eqToken := p.previous()
+		value, err := p.parseAssignment()
+		if err != nil {
+			return nil, err
+		}
+
+		switch eqExprRaw := eqExpr.(type) {
+		case d.VariableExpr:
+			return d.AssignExpr{
+				Name:  eqExprRaw.Name,
+				Value: value,
+			}, nil
+		}
+
+		return nil, ErrParse{message: "Invalid assingment target.", token: eqToken}
+	}
+
+	return eqExpr, nil
 }
 
 func (p *Parser) parseEquality() (d.Expr, error) {
@@ -251,7 +304,7 @@ func (p *Parser) parsePrimary() (d.Expr, error) {
 
 	if p.match(d.IDENTIFIER) {
 		return d.VariableExpr{
-			Name: *p.previous(),
+			Name: p.previous(),
 		}, nil
 	}
 

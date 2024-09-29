@@ -73,6 +73,14 @@ func IsEqualExpr(e, o d.Expr) bool {
 			return IsEqualExpr(expected.Expression, other.Expression)
 		}
 		return false
+	case d.AssignExpr:
+		switch o.(type) {
+		case d.AssignExpr:
+			expected, other := e.(d.AssignExpr), o.(d.AssignExpr)
+			return expected.Name.Lexeme == other.Name.Lexeme &&
+				IsEqualExpr(expected.Value, other.Value)
+		}
+		return false
 	}
 
 	return false
@@ -100,6 +108,22 @@ func IsEqualStmt(s, o d.Stmt) bool {
 			expected, other := s.(d.VarStmt), o.(d.VarStmt)
 			return expected.Name.Lexeme == other.Name.Lexeme &&
 				IsEqualExpr(expected.Initializer, other.Initializer)
+		}
+		return false
+	case d.BlockStmt:
+		switch o.(type) {
+		case d.BlockStmt:
+			expected, other := s.(d.BlockStmt), o.(d.BlockStmt)
+			if len(expected.Stmts) != len(other.Stmts) {
+				return false
+			}
+			for i, eStmt := range expected.Stmts {
+				isEqst := IsEqualStmt(eStmt, other.Stmts[i])
+				if !isEqst {
+					return false
+				}
+			}
+			return true
 		}
 		return false
 	}

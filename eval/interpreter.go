@@ -2,6 +2,7 @@ package eval
 
 import (
 	d "example/compilers/domain"
+	"example/compilers/env"
 	"example/compilers/util"
 	"fmt"
 	"reflect"
@@ -26,10 +27,13 @@ func newErrInterpret(t *d.Token, msg string) ErrInterpret {
 type Interpreter struct {
 	d.ExprVisitor
 	d.StmtVisitor
+	env *env.Environment
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{}
+	return &Interpreter{
+		env: env.NewEnv(nil),
+	}
 }
 
 func (i *Interpreter) Interpret(stmts []d.Stmt) error {
@@ -65,6 +69,47 @@ func (i *Interpreter) VisitPrintStmt(s d.PrintStmt) (interface{}, error) {
 
 	fmt.Println(util.ToString(v))
 	return nil, nil
+}
+
+func (i *Interpreter) VisitVarStmt(s d.VarStmt) (interface{}, error) {
+	var v interface{}
+	if s.Initializer != nil {
+		var err error
+		v, err = i.evaluate(s.Initializer)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	i.env.Define(s.Name.Lexeme, v)
+	return nil, nil
+}
+
+func (i *Interpreter) VisitBlockStmt(s d.BlockStmt) (interface{}, error) {
+	err := i.executeBlock(s.Stmts, env.NewEnv(i.env))
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (i *Interpreter) executeBlock(stmts []d.Stmt, environment *env.Environment) error {
+	previousEnv := i.env
+	defer func() {
+		// Restore previuos env
+		i.env = previousEnv
+	}()
+
+	i.env = environment
+	for _, s := range stmts {
+		err := i.execute(s)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (i *Interpreter) VisitLiteralExpr(e d.LiteralExpr) (interface{}, error) {
@@ -158,6 +203,21 @@ func (i *Interpreter) VisitBinaryExpr(e d.BinaryExpr) (interface{}, error) {
 	}
 
 	return nil, newErrInterpret(e.Operator, "invalid binary operator")
+}
+
+func (i *Interpreter) VisitVariableExpr(e d.VariableExpr) (interface{}, error) {
+	return i.env.Get(e.Name)
+}
+
+func (i *Interpreter) VisitAssignExpr(e d.AssignExpr) (interface{}, error) {
+	v, err := i.evaluate(e.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	i.env.Assign(e.Name, v)
+
+	return v, nil
 }
 
 func (i *Interpreter) evaluate(e d.Expr) (interface{}, error) {

@@ -152,9 +152,20 @@ func TestInterpret(t *testing.T) {
 		stmt d.Stmt
 	}
 
+	vToken := d.NewToken(d.IDENTIFIER, "v", nil, 0)
 	testStmtCases := []InterpretStmtTestCase{
 		{d.PrintStmt{Expression: one}},
-		{d.VarStmt{Name: *d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: one}},
+		{d.VarStmt{Name: d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: one}},
+		{d.BlockStmt{Stmts: []d.Stmt{
+			d.BlockStmt{Stmts: []d.Stmt{
+				d.VarStmt{Name: vToken, Initializer: d.LiteralExpr{Value: 1}},
+				d.ExpressionStmt{Expression: d.AssignExpr{Name: vToken, Value: d.LiteralExpr{Value: "a"}}},
+				d.PrintStmt{Expression: d.VariableExpr{Name: vToken}},
+			}},
+			d.VarStmt{Name: vToken, Initializer: d.LiteralExpr{Value: 1}},
+			d.ExpressionStmt{Expression: d.AssignExpr{Name: vToken, Value: d.LiteralExpr{Value: "a"}}},
+			d.PrintStmt{Expression: d.VariableExpr{Name: vToken}},
+		}}},
 	}
 
 	for _, c := range testStmtCases {
@@ -235,8 +246,11 @@ func TestInterpret(t *testing.T) {
 	}
 
 	errTestStmtCases := []InterpretStmtTestCase{
+		{d.ExpressionStmt{Expression: minStr}},
 		{d.PrintStmt{Expression: minStr}},
-		{d.VarStmt{Name: *d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: minStr}},
+		{d.VarStmt{Name: d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: minStr}},
+		{d.BlockStmt{Stmts: []d.Stmt{d.ExpressionStmt{Expression: minStr}}}},
+		{d.PrintStmt{Expression: d.VariableExpr{Name: vToken}}},
 	}
 
 	for _, c := range errTestStmtCases {
