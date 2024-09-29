@@ -25,14 +25,46 @@ func newErrInterpret(t *d.Token, msg string) ErrInterpret {
 
 type Interpreter struct {
 	d.ExprVisitor
+	d.StmtVisitor
 }
 
 func NewInterpreter() *Interpreter {
 	return &Interpreter{}
 }
 
-func (i *Interpreter) Interpret(e d.Expr) (interface{}, error) {
-	return i.evaluate(e)
+func (i *Interpreter) Interpret(stmts []d.Stmt) error {
+	for _, s := range stmts {
+		err := i.execute(s)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (i *Interpreter) execute(s d.Stmt) error {
+	_, err := s.Accept(i)
+	return err
+}
+
+func (i *Interpreter) VisitExpressionStmt(s d.ExpressionStmt) (interface{}, error) {
+	_, err := i.evaluate(s.Expression)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (i *Interpreter) VisitPrintStmt(s d.PrintStmt) (interface{}, error) {
+	v, err := i.evaluate(s.Expression)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(util.ToString(v))
+	return nil, nil
 }
 
 func (i *Interpreter) VisitLiteralExpr(e d.LiteralExpr) (interface{}, error) {

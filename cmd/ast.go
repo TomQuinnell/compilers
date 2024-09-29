@@ -17,6 +17,13 @@ func main() {
 		"Binary   : Left Expr, Operator *Token, Right Expr",
 		"Literal  : Value interface{}",
 		"Grouping : Expression Expr",
+		"Variable : Name Token",
+	})
+
+	writeAst("Stmt", []string{
+		"Expression : Expression Expr",
+		"Print      : Expression Expr",
+		"Var        : Name Token, Initializer Expr",
 	})
 }
 

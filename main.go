@@ -6,7 +6,6 @@ import (
 	"example/compilers/ast"
 	"example/compilers/eval"
 	"example/compilers/lex"
-	"example/compilers/util"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -34,18 +33,16 @@ func main() {
 	}
 
 	parser := ast.NewParser(tokens)
-	expr, err := parser.Parse()
+	stmts, err := parser.Parse()
 	if err != nil {
 		log.Panic().Err(err).Msg("Failed to parse.")
 	}
 
-	log.Info().Msg(util.ToString(ast.NewAstPrinter().Print(expr)))
+	// log.Info().Msg(util.ToString(ast.NewAstPrinter().Print(stmts)))
 
 	interpreter := eval.NewInterpreter()
-	v, err := interpreter.Interpret(expr)
+	err = interpreter.Interpret(stmts)
 	if err != nil {
 		log.Panic().Err(err).Msg("Failed to interpret.")
 	}
-
-	log.Info().Msg(util.ToString(v))
 }

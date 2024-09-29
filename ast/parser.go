@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"errors"
 	d "example/compilers/domain"
 	"fmt"
 )
@@ -26,8 +27,95 @@ func NewParser(tokens []*d.Token) *Parser {
 	}
 }
 
-func (p *Parser) Parse() (d.Expr, error) {
-	return p.parseExpression()
+func (p *Parser) Parse() ([]d.Stmt, error) {
+	statements := make([]d.Stmt, 0)
+	for !p.isAtEnd() {
+		st, err := p.parseDeclaration()
+		if err != nil {
+			return nil, err
+		}
+		statements = append(statements, st)
+	}
+
+	return statements, nil
+}
+
+func (p *Parser) parseDeclaration() (d.Stmt, error) {
+	pFunc := p.parseStatement
+	if p.match(d.VAR) {
+		pFunc = p.parseVarDeclaration
+	}
+
+	s, err := pFunc()
+	if err == nil {
+		return s, nil
+	}
+
+	if !errors.Is(err, ErrParse{}) {
+		return s, err
+	}
+
+	p.sync()
+	return nil, nil
+}
+
+func (p *Parser) parseVarDeclaration() (d.Stmt, error) {
+	name, err := p.consume(d.IDENTIFIER, "Expect var name")
+	if err != nil {
+		return nil, err
+	}
+
+	var init d.Expr
+	if p.match(d.EQUAL) {
+		init, err = p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = p.consume(d.SEMICOLON, "Expect ';' after var declaration")
+	if err != nil {
+		return nil, err
+	}
+
+	return d.VarStmt{
+		Name:        *name,
+		Initializer: init,
+	}, nil
+}
+
+func (p *Parser) parseStatement() (d.Stmt, error) {
+	if p.match(d.PRINT) {
+		return p.parsePrintStatement()
+	}
+
+	return p.parseExpressionStmt()
+}
+
+func (p *Parser) parsePrintStatement() (d.Stmt, error) {
+	ex, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	p.consume(d.SEMICOLON, "Expect ';' after value.")
+
+	return d.PrintStmt{
+		Expression: ex,
+	}, nil
+}
+
+func (p *Parser) parseExpressionStmt() (d.Stmt, error) {
+	ex, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	p.consume(d.SEMICOLON, "Expect ';' after statement.")
+
+	return d.ExpressionStmt{
+		Expression: ex,
+	}, nil
 }
 
 func (p *Parser) parseExpression() (d.Expr, error) {
@@ -158,6 +246,12 @@ func (p *Parser) parsePrimary() (d.Expr, error) {
 	if p.match(d.NUMBER, d.STRING) {
 		return d.LiteralExpr{
 			Value: p.previous().Literal,
+		}, nil
+	}
+
+	if p.match(d.IDENTIFIER) {
+		return d.VariableExpr{
+			Name: *p.previous(),
 		}, nil
 	}
 

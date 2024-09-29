@@ -75,11 +75,22 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, c := range testCases {
-		t.Run(fmt.Sprintf("Parses raw tokens: %s", util.SprintTokens(c.rawTokens)), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Parses raw expr tokens: %s", util.SprintTokens(c.rawTokens)), func(t *testing.T) {
 			assert := assert.New(t)
 
-			expr, err := NewParser(c.rawTokens).Parse()
+			stmts, err := NewParser(c.rawTokens).Parse()
 			assert.NoError(err)
+
+			assert.Len(stmts, 1)
+			st := stmts[0]
+
+			var expr d.Expr
+			switch s := st.(type) {
+			case d.ExpressionStmt:
+				expr = s.Expression
+			default:
+				assert.Fail("Expected expression stmt")
+			}
 
 			if !util.IsEqualExpr(c.expectedExpr, expr) {
 				fmt.Println("Expected:")
@@ -88,6 +99,67 @@ func TestParse(t *testing.T) {
 				fmt.Println(NewAstPrinter().Print(expr))
 			}
 			assert.True(util.IsEqualExpr(c.expectedExpr, expr))
+		})
+	}
+
+	semicolon := d.NewToken(d.SEMICOLON, ";", nil, 0)
+
+	t.Run("Parses 2 raw exprs", func(t *testing.T) {
+		assert := assert.New(t)
+
+		rawTokens := []*d.Token{one, eqeq, one, semicolon, one, eqeq, one}
+
+		stmts, err := NewParser(rawTokens).Parse()
+		assert.NoError(err)
+
+		assert.Len(stmts, 2)
+
+		for _, st := range stmts {
+			var expr d.Expr
+			switch s := st.(type) {
+			case d.ExpressionStmt:
+				expr = s.Expression
+			default:
+				assert.Fail("Expected expression stmt")
+			}
+
+			expectedExpr := d.BinaryExpr{Left: d.LiteralExpr{Value: 1}, Operator: eqeq, Right: d.LiteralExpr{Value: 1}}
+			if !util.IsEqualExpr(expectedExpr, expr) {
+				fmt.Println("Expected:")
+				fmt.Println(NewAstPrinter().Print(expectedExpr))
+				fmt.Println("Actual:")
+				fmt.Println(NewAstPrinter().Print(expr))
+			}
+			assert.True(util.IsEqualExpr(expectedExpr, expr))
+		}
+	})
+
+	type ParseStmtTestCase struct {
+		rawTokens    []*d.Token
+		expectedStmt d.Stmt
+	}
+
+	varToken := d.NewToken(d.VAR, "var", nil, 0)
+	vToken := d.NewToken(d.IDENTIFIER, "v", nil, 0)
+	eqToken := d.NewToken(d.EQUAL, "=", nil, 0)
+	printToken := d.NewToken(d.PRINT, "print", nil, 0)
+
+	stmtTestCases := []ParseStmtTestCase{
+		{[]*d.Token{varToken, vToken, eqToken, one, semicolon}, d.VarStmt{Name: *d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: d.LiteralExpr{Value: 1}}},
+		{[]*d.Token{printToken, one, semicolon}, d.PrintStmt{Expression: d.LiteralExpr{Value: 1}}},
+	}
+
+	for _, c := range stmtTestCases {
+		t.Run(fmt.Sprintf("Parses raw stmt tokens: %s", util.SprintTokens(c.rawTokens)), func(t *testing.T) {
+			assert := assert.New(t)
+
+			stmts, err := NewParser(c.rawTokens).Parse()
+			assert.NoError(err)
+
+			assert.Len(stmts, 1)
+			st := stmts[0]
+
+			assert.True(util.IsEqualStmt(c.expectedStmt, st))
 		})
 	}
 }

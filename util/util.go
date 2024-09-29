@@ -78,6 +78,35 @@ func IsEqualExpr(e, o d.Expr) bool {
 	return false
 }
 
+func IsEqualStmt(s, o d.Stmt) bool {
+	switch s.(type) {
+	case d.ExpressionStmt:
+		switch o.(type) {
+		case d.ExpressionStmt:
+			expected, other := s.(d.ExpressionStmt), o.(d.ExpressionStmt)
+			return IsEqualExpr(expected.Expression, other.Expression)
+		}
+		return false
+	case d.PrintStmt:
+		switch o.(type) {
+		case d.PrintStmt:
+			expected, other := s.(d.PrintStmt), o.(d.PrintStmt)
+			return IsEqualExpr(expected.Expression, other.Expression)
+		}
+		return false
+	case d.VarStmt:
+		switch o.(type) {
+		case d.VarStmt:
+			expected, other := s.(d.VarStmt), o.(d.VarStmt)
+			return expected.Name.Lexeme == other.Name.Lexeme &&
+				IsEqualExpr(expected.Initializer, other.Initializer)
+		}
+		return false
+	}
+
+	return false
+}
+
 func ToDouble(v interface{}) (float64, error) {
 	switch i := v.(type) {
 	case float64:

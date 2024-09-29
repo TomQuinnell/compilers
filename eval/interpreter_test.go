@@ -142,10 +142,28 @@ func TestInterpret(t *testing.T) {
 		t.Run(fmt.Sprintf("Interprets expr: %s", s), func(t *testing.T) {
 			assert := assert.New(t)
 
-			v, err := NewInterpreter().Interpret(c.expr)
+			stmts := []d.Stmt{d.ExpressionStmt{Expression: c.expr}}
+			err := NewInterpreter().Interpret(stmts)
 			assert.NoError(err)
+		})
+	}
 
-			assert.Equal(c.expectedVal, v)
+	type InterpretStmtTestCase struct {
+		stmt d.Stmt
+	}
+
+	testStmtCases := []InterpretStmtTestCase{
+		{d.PrintStmt{Expression: one}},
+		{d.VarStmt{Name: *d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: one}},
+	}
+
+	for _, c := range testStmtCases {
+		t.Run("Interprets stmt: %s", func(t *testing.T) {
+			assert := assert.New(t)
+
+			stmts := []d.Stmt{c.stmt}
+			err := NewInterpreter().Interpret(stmts)
+			assert.NoError(err)
 		})
 	}
 
@@ -210,7 +228,23 @@ func TestInterpret(t *testing.T) {
 		t.Run(fmt.Sprintf("Does not interpret expr: %s", s), func(t *testing.T) {
 			assert := assert.New(t)
 
-			_, err := NewInterpreter().Interpret(c.expr)
+			stmts := []d.Stmt{d.ExpressionStmt{Expression: c.expr}}
+			err := NewInterpreter().Interpret(stmts)
+			assert.Error(err)
+		})
+	}
+
+	errTestStmtCases := []InterpretStmtTestCase{
+		{d.PrintStmt{Expression: minStr}},
+		{d.VarStmt{Name: *d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: minStr}},
+	}
+
+	for _, c := range errTestStmtCases {
+		t.Run("Interprets stmt: %s", func(t *testing.T) {
+			assert := assert.New(t)
+
+			stmts := []d.Stmt{c.stmt}
+			err := NewInterpreter().Interpret(stmts)
 			assert.Error(err)
 		})
 	}
