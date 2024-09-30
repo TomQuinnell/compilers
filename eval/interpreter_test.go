@@ -153,6 +153,10 @@ func TestInterpret(t *testing.T) {
 	}
 
 	vToken := d.NewToken(d.IDENTIFIER, "v", nil, 0)
+	orToken := d.NewToken(d.OR, "or", nil, 0)
+	andToken := d.NewToken(d.AND, "and", nil, 0)
+	eqeqToken := d.NewToken(d.EQUAL_EQUAL, "==", nil, 0)
+
 	testStmtCases := []InterpretStmtTestCase{
 		{d.PrintStmt{Expression: one}},
 		{d.VarStmt{Name: d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: one}},
@@ -165,6 +169,35 @@ func TestInterpret(t *testing.T) {
 			d.VarStmt{Name: vToken, Initializer: d.LiteralExpr{Value: 1}},
 			d.ExpressionStmt{Expression: d.AssignExpr{Name: vToken, Value: d.LiteralExpr{Value: "a"}}},
 			d.PrintStmt{Expression: d.VariableExpr{Name: vToken}},
+		}}},
+		{d.IfStmt{
+			Condition: d.LogicalExpr{
+				Left:     d.BinaryExpr{Left: d.LiteralExpr{Value: 1}, Operator: eqeqToken, Right: d.LiteralExpr{Value: 1}},
+				Operator: orToken,
+				Right:    d.BinaryExpr{Left: d.LiteralExpr{Value: 1}, Operator: eqeqToken, Right: d.LiteralExpr{Value: "a"}},
+			},
+			ThenBranch: d.BlockStmt{Stmts: []d.Stmt{d.PrintStmt{Expression: d.LiteralExpr{Value: 1}}}},
+			ElseBranch: nil,
+		}},
+		{d.IfStmt{
+			Condition: d.LogicalExpr{
+				Left:     d.BinaryExpr{Left: d.LiteralExpr{Value: 1}, Operator: eqeqToken, Right: d.LiteralExpr{Value: 1}},
+				Operator: andToken,
+				Right:    d.BinaryExpr{Left: d.LiteralExpr{Value: 2}, Operator: eqeqToken, Right: d.LiteralExpr{Value: 1}},
+			},
+			ThenBranch: d.BlockStmt{Stmts: []d.Stmt{d.PrintStmt{Expression: d.LiteralExpr{Value: 1}}}},
+			ElseBranch: d.BlockStmt{Stmts: []d.Stmt{d.PrintStmt{Expression: d.LiteralExpr{Value: "a"}}}},
+		}},
+		{d.WhileStmt{
+			Condition: d.LiteralExpr{Value: false},
+			Body:      d.BlockStmt{Stmts: []d.Stmt{d.PrintStmt{Expression: d.LiteralExpr{Value: 1}}}},
+		}},
+		{d.BlockStmt{Stmts: []d.Stmt{
+			d.VarStmt{Name: vToken, Initializer: d.LiteralExpr{Value: 0}},
+			d.WhileStmt{
+				Condition: d.BinaryExpr{Left: d.VariableExpr{Name: vToken}, Operator: eqeqToken, Right: d.LiteralExpr{Value: 0}},
+				Body:      d.BlockStmt{Stmts: []d.Stmt{d.ExpressionStmt{Expression: d.AssignExpr{Name: vToken, Value: d.LiteralExpr{Value: 1}}}}},
+			},
 		}}},
 	}
 
@@ -251,6 +284,8 @@ func TestInterpret(t *testing.T) {
 		{d.VarStmt{Name: d.NewToken(d.IDENTIFIER, "v", nil, 0), Initializer: minStr}},
 		{d.BlockStmt{Stmts: []d.Stmt{d.ExpressionStmt{Expression: minStr}}}},
 		{d.PrintStmt{Expression: d.VariableExpr{Name: vToken}}},
+		{d.IfStmt{Condition: minStr}},
+		{d.WhileStmt{Condition: minStr}},
 	}
 
 	for _, c := range errTestStmtCases {

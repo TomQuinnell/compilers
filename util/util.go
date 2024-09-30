@@ -81,8 +81,18 @@ func IsEqualExpr(e, o d.Expr) bool {
 				IsEqualExpr(expected.Value, other.Value)
 		}
 		return false
+	case d.LogicalExpr:
+		switch o.(type) {
+		case d.LogicalExpr:
+			expected, other := e.(d.LogicalExpr), o.(d.LogicalExpr)
+			return IsEqualExpr(expected.Left, other.Left) &&
+				expected.Operator.Lexeme == other.Operator.Lexeme &&
+				IsEqualExpr(expected.Right, other.Right)
+		}
+		return false
 	}
 
+	fmt.Printf("UNKNOWN EXPR TYPE %#v\n", o)
 	return false
 }
 
@@ -126,8 +136,30 @@ func IsEqualStmt(s, o d.Stmt) bool {
 			return true
 		}
 		return false
+	case d.IfStmt:
+		switch o.(type) {
+		case d.IfStmt:
+			expected, other := s.(d.IfStmt), o.(d.IfStmt)
+			return IsEqualExpr(expected.Condition, other.Condition) &&
+				IsEqualStmt(expected.ThenBranch, other.ThenBranch) &&
+				IsEqualStmt(expected.ElseBranch, other.ElseBranch)
+		}
+		return false
+	case d.WhileStmt:
+		switch o.(type) {
+		case d.WhileStmt:
+			expected, other := s.(d.WhileStmt), o.(d.WhileStmt)
+			return IsEqualExpr(expected.Condition, other.Condition) &&
+				IsEqualStmt(expected.Body, other.Body)
+		}
+		return false
 	}
 
+	if s == nil && o == nil {
+		return true
+	}
+
+	fmt.Printf("UNKNOWN STMT TYPE %#v\n", o)
 	return false
 }
 

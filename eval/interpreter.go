@@ -48,50 +48,77 @@ func (i *Interpreter) Interpret(stmts []d.Stmt) error {
 }
 
 func (i *Interpreter) execute(s d.Stmt) error {
-	_, err := s.Accept(i)
-	return err
+	return s.Accept(i)
 }
 
-func (i *Interpreter) VisitExpressionStmt(s d.ExpressionStmt) (interface{}, error) {
+func (i *Interpreter) VisitExpressionStmt(s d.ExpressionStmt) error {
 	_, err := i.evaluate(s.Expression)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	return nil, nil
+	return nil
 }
 
-func (i *Interpreter) VisitPrintStmt(s d.PrintStmt) (interface{}, error) {
+func (i *Interpreter) VisitIfStmt(s d.IfStmt) error {
+	condition, err := i.evaluate(s.Condition)
+	if err != nil {
+		return err
+	}
+	if i.isTruthy(condition) {
+		return i.execute(s.ThenBranch)
+	}
+
+	if s.ElseBranch != nil {
+		return i.execute(s.ElseBranch)
+	}
+
+	return nil
+}
+
+func (i *Interpreter) VisitWhileStmt(s d.WhileStmt) error {
+	for {
+		v, err := i.evaluate(s.Condition)
+		if err != nil {
+			return err
+		}
+
+		if !i.isTruthy(v) {
+			return nil
+		}
+
+		err = i.execute(s.Body)
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func (i *Interpreter) VisitPrintStmt(s d.PrintStmt) error {
 	v, err := i.evaluate(s.Expression)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	fmt.Println(util.ToString(v))
-	return nil, nil
+	return nil
 }
 
-func (i *Interpreter) VisitVarStmt(s d.VarStmt) (interface{}, error) {
+func (i *Interpreter) VisitVarStmt(s d.VarStmt) error {
 	var v interface{}
 	if s.Initializer != nil {
 		var err error
 		v, err = i.evaluate(s.Initializer)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	i.env.Define(s.Name.Lexeme, v)
-	return nil, nil
+	return nil
 }
 
-func (i *Interpreter) VisitBlockStmt(s d.BlockStmt) (interface{}, error) {
-	err := i.executeBlock(s.Stmts, env.NewEnv(i.env))
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+func (i *Interpreter) VisitBlockStmt(s d.BlockStmt) error {
+	return i.executeBlock(s.Stmts, env.NewEnv(i.env))
 }
 
 func (i *Interpreter) executeBlock(stmts []d.Stmt, environment *env.Environment) error {
@@ -203,6 +230,25 @@ func (i *Interpreter) VisitBinaryExpr(e d.BinaryExpr) (interface{}, error) {
 	}
 
 	return nil, newErrInterpret(e.Operator, "invalid binary operator")
+}
+
+func (i *Interpreter) VisitLogicalExpr(e d.LogicalExpr) (interface{}, error) {
+	left, err := i.evaluate(e.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	if e.Operator.Kind == d.OR {
+		if i.isTruthy(left) {
+			return left, nil
+		}
+	} else {
+		if !i.isTruthy(left) {
+			return left, nil
+		}
+	}
+
+	return i.evaluate(e.Right)
 }
 
 func (i *Interpreter) VisitVariableExpr(e d.VariableExpr) (interface{}, error) {

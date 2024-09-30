@@ -85,8 +85,17 @@ func (p *Parser) parseVarDeclaration() (d.Stmt, error) {
 }
 
 func (p *Parser) parseStatement() (d.Stmt, error) {
+	if p.match(d.FOR) {
+		return p.parseForStmt()
+	}
+	if p.match(d.IF) {
+		return p.parseIfStmt()
+	}
 	if p.match(d.PRINT) {
 		return p.parsePrintStatement()
+	}
+	if p.match(d.WHILE) {
+		return p.parseWhileStatement()
 	}
 	if p.match(d.LEFT_BRACE) {
 		stmts, err := p.parseBlock()
@@ -101,13 +110,146 @@ func (p *Parser) parseStatement() (d.Stmt, error) {
 	return p.parseExpressionStmt()
 }
 
+func (p *Parser) parseForStmt() (d.Stmt, error) {
+	// Consume tokens
+	_, err := p.consume(d.LEFT_PAREN, "Expect '(' after 'for'")
+	if err != nil {
+		return nil, err
+	}
+
+	var initializer d.Stmt
+	if p.match(d.SEMICOLON) {
+		initializer = nil
+	} else if p.match(d.VAR) {
+		initializer, err = p.parseVarDeclaration()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		initializer, err = p.parseExpressionStmt()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var condition d.Expr
+	if !p.check(d.SEMICOLON) {
+		condition, err = p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		condition = d.LiteralExpr{Value: true}
+	}
+	_, err = p.consume(d.SEMICOLON, "Expect ';' after loop condition.")
+	if err != nil {
+		return nil, err
+	}
+
+	var increment d.Expr
+	if !p.check(d.RIGHT_PAREN) {
+		increment, err = p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = p.consume(d.RIGHT_PAREN, "Expect ')' after for clause.")
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := p.parseStatement()
+	if err != nil {
+		return nil, err
+	}
+
+	// Sugarfy
+	if increment != nil {
+		body = d.BlockStmt{
+			Stmts: []d.Stmt{body, d.ExpressionStmt{Expression: increment}},
+		}
+	}
+	body = d.WhileStmt{
+		Condition: condition,
+		Body:      body,
+	}
+	if initializer != nil {
+		body = d.BlockStmt{
+			Stmts: []d.Stmt{initializer, body},
+		}
+	}
+
+	return body, nil
+}
+
+func (p *Parser) parseIfStmt() (d.Stmt, error) {
+	_, err := p.consume(d.LEFT_PAREN, "Expect '(' after 'if'.")
+	if err != nil {
+		return nil, err
+	}
+	condition, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	_, err = p.consume(d.RIGHT_PAREN, "Expect ')' after 'if' condition.")
+	if err != nil {
+		return nil, err
+	}
+
+	thenBranch, err := p.parseStatement()
+	if err != nil {
+		return nil, err
+	}
+	var elseBranch d.Stmt
+	if p.match(d.ELSE) {
+		elseBranch, err = p.parseStatement()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return d.IfStmt{
+		Condition:  condition,
+		ThenBranch: thenBranch,
+		ElseBranch: elseBranch,
+	}, nil
+}
+
+func (p *Parser) parseWhileStatement() (d.Stmt, error) {
+	_, err := p.consume(d.LEFT_PAREN, "Expect '(' after 'while'.")
+	if err != nil {
+		return nil, err
+	}
+	condition, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	_, err = p.consume(d.RIGHT_PAREN, "Expect ')' after 'while' condition.")
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := p.parseStatement()
+	if err != nil {
+		return nil, err
+	}
+
+	return d.WhileStmt{
+		Condition: condition,
+		Body:      body,
+	}, nil
+}
+
 func (p *Parser) parsePrintStatement() (d.Stmt, error) {
 	ex, err := p.parseExpression()
 	if err != nil {
 		return nil, err
 	}
 
-	p.consume(d.SEMICOLON, "Expect ';' after value.")
+	_, err = p.consume(d.SEMICOLON, "Expect ';' after value.")
+	if err != nil {
+		return nil, err
+	}
 
 	return d.PrintStmt{
 		Expression: ex,
@@ -126,7 +268,10 @@ func (p *Parser) parseBlock() ([]d.Stmt, error) {
 		stmts = append(stmts, s)
 	}
 
-	p.consume(d.RIGHT_BRACE, "Expect '}' after block.")
+	_, err := p.consume(d.RIGHT_BRACE, "Expect '}' after block.")
+	if err != nil {
+		return nil, err
+	}
 
 	return stmts, nil
 }
@@ -137,7 +282,10 @@ func (p *Parser) parseExpressionStmt() (d.Stmt, error) {
 		return nil, err
 	}
 
-	p.consume(d.SEMICOLON, "Expect ';' after statement.")
+	_, err = p.consume(d.SEMICOLON, "Expect ';' after statement.")
+	if err != nil {
+		return nil, err
+	}
 
 	return d.ExpressionStmt{
 		Expression: ex,
@@ -149,7 +297,7 @@ func (p *Parser) parseExpression() (d.Expr, error) {
 }
 
 func (p *Parser) parseAssignment() (d.Expr, error) {
-	eqExpr, err := p.parseEquality()
+	eqExpr, err := p.parseOr()
 	if err != nil {
 		return nil, err
 	}
@@ -173,6 +321,52 @@ func (p *Parser) parseAssignment() (d.Expr, error) {
 	}
 
 	return eqExpr, nil
+}
+
+func (p *Parser) parseOr() (d.Expr, error) {
+	expr, err := p.parseAnd()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.match(d.OR) {
+		operator := p.previous()
+		right, err := p.parseAnd()
+		if err != nil {
+			return nil, err
+		}
+
+		expr = d.LogicalExpr{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+
+	return expr, nil
+}
+
+func (p *Parser) parseAnd() (d.Expr, error) {
+	expr, err := p.parseEquality()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.match(d.AND) {
+		operator := p.previous()
+		right, err := p.parseEquality()
+		if err != nil {
+			return nil, err
+		}
+
+		expr = d.LogicalExpr{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+
+	return expr, nil
 }
 
 func (p *Parser) parseEquality() (d.Expr, error) {
