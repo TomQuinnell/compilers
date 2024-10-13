@@ -153,9 +153,13 @@ func TestInterpret(t *testing.T) {
 	}
 
 	vToken := d.NewToken(d.IDENTIFIER, "v", nil, 0)
+	v1Token := d.NewToken(d.IDENTIFIER, "v1", nil, 0)
+	v2Token := d.NewToken(d.IDENTIFIER, "v2", nil, 0)
 	orToken := d.NewToken(d.OR, "or", nil, 0)
 	andToken := d.NewToken(d.AND, "and", nil, 0)
 	eqeqToken := d.NewToken(d.EQUAL_EQUAL, "==", nil, 0)
+	returnToken := d.NewToken(d.RETURN, "return", nil, 0)
+	closeBracketToken := d.NewToken(d.RIGHT_PAREN, ")", nil, 0)
 
 	testStmtCases := []InterpretStmtTestCase{
 		{d.PrintStmt{Expression: one}},
@@ -197,6 +201,20 @@ func TestInterpret(t *testing.T) {
 			d.WhileStmt{
 				Condition: d.BinaryExpr{Left: d.VariableExpr{Name: vToken}, Operator: eqeqToken, Right: d.LiteralExpr{Value: 0}},
 				Body:      d.BlockStmt{Stmts: []d.Stmt{d.ExpressionStmt{Expression: d.AssignExpr{Name: vToken, Value: d.LiteralExpr{Value: 1}}}}},
+			},
+		}}},
+		{d.BlockStmt{Stmts: []d.Stmt{
+			d.FunctionStmt{
+				Name:   vToken,
+				Params: []*d.Token{v1Token, v2Token},
+				Body:   []d.Stmt{d.ReturnStmt{Keyword: returnToken, Value: d.LiteralExpr{Value: nil}}},
+			},
+			d.ExpressionStmt{
+				Expression: d.CallExpr{
+					Callee: d.VariableExpr{Name: vToken},
+					Paren:  closeBracketToken,
+					Args:   []d.Expr{d.LiteralExpr{Value: 1}, d.LiteralExpr{Value: 1}},
+				},
 			},
 		}}},
 	}
@@ -253,6 +271,16 @@ func TestInterpret(t *testing.T) {
 		Right:    a,
 	}
 	invalidUnary := d.UnaryExpr{Operator: d.NewToken(d.PLUS, "plus", nil, 0), Right: a}
+	invalidArity := d.CallExpr{
+		Callee: d.VariableExpr{Name: vToken},
+		Paren:  closeBracketToken,
+		Args:   []d.Expr{d.LiteralExpr{Value: 1}, d.LiteralExpr{Value: 1}},
+	}
+	invalidCallable := d.CallExpr{
+		Callee: d.LiteralExpr{Value: 1},
+		Paren:  closeBracketToken,
+		Args:   []d.Expr{d.LiteralExpr{Value: 1}, d.LiteralExpr{Value: 1}},
+	}
 
 	errTestCases := []InterpretTestCase{
 		{minStr, nil},
@@ -265,6 +293,8 @@ func TestInterpret(t *testing.T) {
 		{oneMinStr, nil},
 		{invalidBinary, nil},
 		{invalidUnary, nil},
+		{invalidArity, nil},
+		{invalidCallable, nil},
 	}
 
 	for _, c := range errTestCases {

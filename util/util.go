@@ -90,9 +90,31 @@ func IsEqualExpr(e, o d.Expr) bool {
 				IsEqualExpr(expected.Right, other.Right)
 		}
 		return false
+	case d.VariableExpr:
+		switch o.(type) {
+		case d.VariableExpr:
+			expected, other := e.(d.VariableExpr), o.(d.VariableExpr)
+			return expected.Name.Lexeme == other.Name.Lexeme
+		}
+	case d.CallExpr:
+		switch o.(type) {
+		case d.CallExpr:
+			expected, other := e.(d.CallExpr), o.(d.CallExpr)
+			if len(expected.Args) != len(other.Args) {
+				return false
+			}
+			for i := range len(expected.Args) {
+				if !IsEqualExpr(expected.Args[i], other.Args[i]) {
+					return false
+				}
+			}
+			return IsEqualExpr(expected.Callee, other.Callee) &&
+				expected.Paren.Lexeme == other.Paren.Lexeme
+		}
+		return false
 	}
 
-	fmt.Printf("UNKNOWN EXPR TYPE %#v\n", o)
+	fmt.Printf("UNKNOWN EXPR TYPE %#v %#v\n", e, o)
 	return false
 }
 
@@ -151,6 +173,37 @@ func IsEqualStmt(s, o d.Stmt) bool {
 			expected, other := s.(d.WhileStmt), o.(d.WhileStmt)
 			return IsEqualExpr(expected.Condition, other.Condition) &&
 				IsEqualStmt(expected.Body, other.Body)
+		}
+		return false
+	case d.FunctionStmt:
+		switch o.(type) {
+		case d.FunctionStmt:
+			expected, other := s.(d.FunctionStmt), o.(d.FunctionStmt)
+			if len(expected.Params) != len(other.Params) {
+				return false
+			}
+			for i := range len(expected.Params) {
+				if expected.Params[i].Lexeme != other.Params[i].Lexeme {
+					return false
+				}
+			}
+			if len(expected.Body) != len(other.Body) {
+				return false
+			}
+			for i := range len(expected.Body) {
+				if !IsEqualStmt(expected.Body[i], other.Body[i]) {
+					return false
+				}
+			}
+			return expected.Name.Lexeme == other.Name.Lexeme
+		}
+		return false
+	case d.ReturnStmt:
+		switch o.(type) {
+		case d.ReturnStmt:
+			expected, other := s.(d.ReturnStmt), o.(d.ReturnStmt)
+			return expected.Keyword.Lexeme == other.Keyword.Lexeme &&
+				IsEqualExpr(expected.Value, other.Value)
 		}
 		return false
 	}

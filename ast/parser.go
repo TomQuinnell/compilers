@@ -6,6 +6,10 @@ import (
 	"fmt"
 )
 
+const (
+	maxArgsSize = 255
+)
+
 type ErrParse struct {
 	message string
 	token   *d.Token
@@ -42,6 +46,9 @@ func (p *Parser) Parse() ([]d.Stmt, error) {
 
 func (p *Parser) parseDeclaration() (d.Stmt, error) {
 	pFunc := p.parseStatement
+	if p.match(d.FUN) {
+		pFunc = p.parseFunction("function")
+	}
 	if p.match(d.VAR) {
 		pFunc = p.parseVarDeclaration
 	}
@@ -57,6 +64,65 @@ func (p *Parser) parseDeclaration() (d.Stmt, error) {
 
 	p.sync()
 	return nil, nil
+}
+
+func (p *Parser) parseFunction(kind string) func() (d.Stmt, error) {
+	return func() (d.Stmt, error) {
+		name, err := p.consume(d.IDENTIFIER, fmt.Sprintf("Expect %s name.", kind))
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = p.consume(d.LEFT_PAREN, fmt.Sprintf("Expect '(' after %s name.", kind))
+		if err != nil {
+			return nil, err
+		}
+
+		params := make([]*d.Token, 0)
+		if !p.check(d.RIGHT_PAREN) {
+			paramV, err := p.consume(d.IDENTIFIER, "Expect parameter name")
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, paramV)
+
+			for p.match(d.COMMA) {
+				if len(params) >= maxArgsSize {
+					return nil, ErrParse{
+						message: fmt.Sprintf("Can't have more than %d params.", maxArgsSize),
+						token:   p.peek(),
+					}
+				}
+
+				paramV, err := p.consume(d.IDENTIFIER, "Expect parameter name")
+				if err != nil {
+					return nil, err
+				}
+				params = append(params, paramV)
+			}
+		}
+
+		_, err = p.consume(d.RIGHT_PAREN, "Expect ')' after paramters.")
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = p.consume(d.LEFT_BRACE, fmt.Sprintf("Expect '{' before %s body.", kind))
+		if err != nil {
+			return nil, err
+		}
+
+		body, err := p.parseBlock()
+		if err != nil {
+			return nil, err
+		}
+
+		return d.FunctionStmt{
+			Name:   name,
+			Params: params,
+			Body:   body,
+		}, nil
+	}
 }
 
 func (p *Parser) parseVarDeclaration() (d.Stmt, error) {
@@ -93,6 +159,9 @@ func (p *Parser) parseStatement() (d.Stmt, error) {
 	}
 	if p.match(d.PRINT) {
 		return p.parsePrintStatement()
+	}
+	if p.match(d.RETURN) {
+		return p.parseReturnStatement()
 	}
 	if p.match(d.WHILE) {
 		return p.parseWhileStatement()
@@ -253,6 +322,29 @@ func (p *Parser) parsePrintStatement() (d.Stmt, error) {
 
 	return d.PrintStmt{
 		Expression: ex,
+	}, nil
+}
+
+func (p *Parser) parseReturnStatement() (d.Stmt, error) {
+	keyword := p.previous()
+
+	var value d.Expr
+	if !p.check(d.SEMICOLON) {
+		var err error
+		value, err = p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err := p.consume(d.SEMICOLON, "Expect ';' after return value.")
+	if err != nil {
+		return nil, err
+	}
+
+	return d.ReturnStmt{
+		Keyword: keyword,
+		Value:   value,
 	}, nil
 }
 
@@ -470,7 +562,65 @@ func (p *Parser) parseUnary() (d.Expr, error) {
 		}, nil
 	}
 
-	return p.parsePrimary()
+	return p.parseCall()
+}
+
+func (p *Parser) parseCall() (d.Expr, error) {
+	expr, err := p.parsePrimary()
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		if p.match(d.LEFT_PAREN) {
+			expr, err = p.finishCall(expr)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			break
+		}
+	}
+
+	return expr, nil
+}
+
+func (p *Parser) finishCall(callee d.Expr) (d.Expr, error) {
+	args := make([]d.Expr, 0)
+
+	if !p.check(d.RIGHT_PAREN) {
+		expr, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, expr)
+
+		for p.match(d.COMMA) {
+			if len(args) >= maxArgsSize {
+				return nil, ErrParse{
+					message: fmt.Sprintf("Can't have more than %d args.", maxArgsSize),
+					token:   p.peek(),
+				}
+			}
+
+			expr, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, expr)
+		}
+	}
+
+	parenToken, err := p.consume(d.RIGHT_PAREN, "Expect ')' after arguments.")
+	if err != nil {
+		return nil, err
+	}
+
+	return d.CallExpr{
+		Callee: callee,
+		Paren:  parenToken,
+		Args:   args,
+	}, nil
 }
 
 func (p *Parser) parsePrimary() (d.Expr, error) {

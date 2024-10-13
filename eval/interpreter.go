@@ -27,12 +27,18 @@ func newErrInterpret(t *d.Token, msg string) ErrInterpret {
 type Interpreter struct {
 	d.ExprVisitor
 	d.StmtVisitor
-	env *env.Environment
+
+	env     *env.Environment
+	globals *env.Environment
 }
 
 func NewInterpreter() *Interpreter {
+	globals := env.NewEnv(nil)
+	globals.Define("clock", ClockCallable{})
+
 	return &Interpreter{
-		env: env.NewEnv(nil),
+		env:     globals,
+		globals: globals,
 	}
 }
 
@@ -56,6 +62,13 @@ func (i *Interpreter) VisitExpressionStmt(s d.ExpressionStmt) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (i *Interpreter) VisitFunctionStmt(s d.FunctionStmt) error {
+	fn := newFunc(s, i.env)
+	i.env.Define(s.Name.Lexeme, fn)
+
 	return nil
 }
 
@@ -101,6 +114,25 @@ func (i *Interpreter) VisitPrintStmt(s d.PrintStmt) error {
 
 	fmt.Println(util.ToString(v))
 	return nil
+}
+
+type ReturnVal struct {
+	Value interface{}
+}
+
+func (i *Interpreter) VisitReturnStmt(s d.ReturnStmt) error {
+	var value interface{}
+	if s.Value != nil {
+		var err error
+		value, err = i.evaluate(s.Value)
+		if err != nil {
+			return err
+		}
+	}
+
+	// I don't like this but it's the easiest way to unwrap the
+	// call stack to get back to the caller...
+	panic(ReturnVal{Value: value})
 }
 
 func (i *Interpreter) VisitVarStmt(s d.VarStmt) error {
@@ -230,6 +262,36 @@ func (i *Interpreter) VisitBinaryExpr(e d.BinaryExpr) (interface{}, error) {
 	}
 
 	return nil, newErrInterpret(e.Operator, "invalid binary operator")
+}
+
+func (i *Interpreter) VisitCallExpr(e d.CallExpr) (interface{}, error) {
+	callee, err := i.evaluate(e.Callee)
+	if err != nil {
+		return nil, err
+	}
+
+	args := make([]interface{}, len(e.Args))
+	for j, arg := range e.Args {
+		argV, err := i.evaluate(arg)
+		if err != nil {
+			return nil, err
+		}
+
+		args[j] = argV
+	}
+
+	cb, ok := callee.(Callable)
+	if !ok {
+		return nil, newErrInterpret(e.Paren, "can only call function/class")
+	}
+
+	if len(args) != cb.Arity() {
+		return nil, newErrInterpret(
+			e.Paren,
+			fmt.Sprintf("expected %d args but got %d instead.", len(args), cb.Arity()))
+	}
+
+	return cb.Call(i, args)
 }
 
 func (i *Interpreter) VisitLogicalExpr(e d.LogicalExpr) (interface{}, error) {
