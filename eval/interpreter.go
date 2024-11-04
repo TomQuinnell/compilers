@@ -30,6 +30,7 @@ type Interpreter struct {
 
 	env     *env.Environment
 	globals *env.Environment
+	locals  map[d.Expr]int
 }
 
 func NewInterpreter() *Interpreter {
@@ -39,7 +40,12 @@ func NewInterpreter() *Interpreter {
 	return &Interpreter{
 		env:     globals,
 		globals: globals,
+		locals:  make(map[d.Expr]int),
 	}
+}
+
+func (i *Interpreter) Resolve(expr d.Expr, depth int) {
+	i.locals[expr] = depth
 }
 
 func (i *Interpreter) Interpret(stmts []d.Stmt) error {
@@ -314,7 +320,16 @@ func (i *Interpreter) VisitLogicalExpr(e d.LogicalExpr) (interface{}, error) {
 }
 
 func (i *Interpreter) VisitVariableExpr(e d.VariableExpr) (interface{}, error) {
-	return i.env.Get(e.Name)
+	return i.lookUpVariable(e.Name, e)
+}
+
+func (i *Interpreter) lookUpVariable(name *d.Token, expr d.Expr) (interface{}, error) {
+	distance, ok := i.locals[expr]
+	if ok {
+		return i.env.GetAt(distance, name.Lexeme)
+	} else {
+		return i.globals.Get(name)
+	}
 }
 
 func (i *Interpreter) VisitAssignExpr(e d.AssignExpr) (interface{}, error) {
@@ -323,7 +338,12 @@ func (i *Interpreter) VisitAssignExpr(e d.AssignExpr) (interface{}, error) {
 		return nil, err
 	}
 
-	i.env.Assign(e.Name, v)
+	distance, ok := i.locals[e]
+	if ok {
+		i.env.AssignAt(distance, e.Name, v)
+	} else {
+		i.globals.Assign(e.Name, v)
+	}
 
 	return v, nil
 }

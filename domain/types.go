@@ -95,6 +95,13 @@ const (
 	EOF
 )
 
+type FunctionType int
+
+const (
+	FUNCTION_TYPE_NONE = iota
+	FUNCTION_TYPE_FN
+)
+
 func (t TokenType) String() string {
 	switch t {
 	case LEFT_PAREN:

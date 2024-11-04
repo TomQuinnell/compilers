@@ -33,6 +33,18 @@ func (e *Environment) Get(name *d.Token) (interface{}, error) {
 	return nil, fmt.Errorf("env value '%s' not found", name.Lexeme) // TODO: runtime err?
 }
 
+func (e *Environment) GetAt(distance int, name string) (interface{}, error) {
+	return e.ancestor(distance).values[name], nil
+}
+
+func (e *Environment) ancestor(distance int) *Environment {
+	env := e
+	for range distance {
+		env = env.enclosing
+	}
+	return env
+}
+
 func (e *Environment) Assign(name *d.Token, v interface{}) error {
 	if _, ok := e.values[name.Lexeme]; ok {
 		e.values[name.Lexeme] = v
@@ -44,6 +56,10 @@ func (e *Environment) Assign(name *d.Token, v interface{}) error {
 	}
 
 	return fmt.Errorf("variable '%s' undefined", name.Lexeme)
+}
+
+func (e *Environment) AssignAt(distance int, name *d.Token, v interface{}) {
+	e.ancestor(distance).values[name.Lexeme] = v
 }
 
 // TODO: tests? Ehh no

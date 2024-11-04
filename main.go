@@ -6,6 +6,7 @@ import (
 	"example/compilers/ast"
 	"example/compilers/eval"
 	"example/compilers/lex"
+	"example/compilers/resolve"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -38,9 +39,15 @@ func main() {
 		log.Panic().Err(err).Msg("Failed to parse.")
 	}
 
+	interpreter := eval.NewInterpreter()
+	resolver := resolve.NewResolver(interpreter)
+	err = resolver.Resolve(stmts)
+	if err != nil {
+		log.Panic().Err(err).Msg("Failed to resolve")
+	}
+
 	// log.Info().Msg(util.ToString(ast.NewAstPrinter().Print(stmts)))
 
-	interpreter := eval.NewInterpreter()
 	err = interpreter.Interpret(stmts)
 	if err != nil {
 		log.Panic().Err(err).Msg("Failed to interpret.")
