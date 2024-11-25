@@ -71,8 +71,22 @@ func (i *Interpreter) VisitExpressionStmt(s d.ExpressionStmt) error {
 	return nil
 }
 
+func (i *Interpreter) VisitClassStmt(s d.ClassStmt) error {
+	i.env.Define(s.Name.Lexeme, nil)
+
+	methods := make(map[string]Func)
+	for _, method := range s.Methods {
+		methods[method.Name.Lexeme] = newFunc(method, i.env, method.Name.Lexeme == "init")
+	}
+
+	klass := newClass(s.Name.Lexeme, methods)
+
+	i.env.Assign(s.Name, klass)
+	return nil
+}
+
 func (i *Interpreter) VisitFunctionStmt(s d.FunctionStmt) error {
-	fn := newFunc(s, i.env)
+	fn := newFunc(s, i.env, false)
 	i.env.Define(s.Name.Lexeme, fn)
 
 	return nil
@@ -298,6 +312,42 @@ func (i *Interpreter) VisitCallExpr(e d.CallExpr) (interface{}, error) {
 	}
 
 	return cb.Call(i, args)
+}
+
+func (i *Interpreter) VisitGetExpr(e d.GetExpr) (interface{}, error) {
+	obj, err := i.evaluate(e.Object)
+	if err != nil {
+		return nil, err
+	}
+
+	if instance, ok := obj.(Instance); ok {
+		return instance.Get(e.Name)
+	}
+
+	return nil, newErrInterpret(e.Name, "Only instances have properties")
+}
+
+func (i *Interpreter) VisitSetExpr(e d.SetExpr) (interface{}, error) {
+	obj, err := i.evaluate(e.Object)
+	if err != nil {
+		return nil, err
+	}
+
+	if instance, ok := obj.(Instance); ok {
+		value, err := i.evaluate(e.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		instance.Set(e.Name, value)
+		return value, nil
+	}
+
+	return nil, newErrInterpret(e.Name, "Only instances have fields")
+}
+
+func (i *Interpreter) VisitThisExpr(e d.ThisExpr) (interface{}, error) {
+	return i.lookUpVariable(e.Keyword, e)
 }
 
 func (i *Interpreter) VisitLogicalExpr(e d.LogicalExpr) (interface{}, error) {

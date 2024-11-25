@@ -14,6 +14,9 @@ func TestResolve(t *testing.T) {
 	}
 
 	vToken := d.NewToken(d.VAR, "v", nil, 0)
+	initToken := d.NewToken(d.IDENTIFIER, "init", nil, 0)
+	radiusToken := d.NewToken(d.IDENTIFIER, "radius", nil, 0)
+	returnToken := d.NewToken(d.RETURN, "return", nil, 0)
 
 	testCases := []ResolveTestCase{
 		// Own local var in initializer
@@ -42,6 +45,28 @@ func TestResolve(t *testing.T) {
 		{[]d.Stmt{
 			d.ReturnStmt{Keyword: vToken, Value: d.LiteralExpr{Value: 1}},
 		}},
+		// This from top-level code
+		{[]d.Stmt{
+			d.ExpressionStmt{
+				Expression: d.ThisExpr{Keyword: vToken},
+			},
+		}},
+		// Return from init
+		{[]d.Stmt{
+			d.ClassStmt{
+				Name: vToken,
+				Methods: []d.FunctionStmt{
+					{
+						Name:   initToken,
+						Params: []*d.Token{radiusToken},
+						Body: []d.Stmt{d.ReturnStmt{
+							Keyword: returnToken,
+							Value:   d.LiteralExpr{Value: 1},
+						}}},
+				},
+			},
+		},
+		},
 	}
 
 	for _, c := range testCases {

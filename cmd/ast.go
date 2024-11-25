@@ -17,14 +17,18 @@ func main() {
 		"Assign   : Name *Token, Value Expr",
 		"Binary   : Left Expr, Operator *Token, Right Expr",
 		"Call     : Callee Expr, Paren *Token, Args []Expr",
+		"Get      : Object Expr, Name *Token",
 		"Literal  : Value interface{}",
 		"Logical  : Left Expr, Operator *Token, Right Expr",
+		"Set      : Object Expr, Name *Token, Value Expr",
+		"This     : Keyword *Token",
 		"Grouping : Expression Expr",
 		"Variable : Name *Token",
 	}, true)
 
 	writeAst("Stmt", []string{
 		"Block      : Stmts []Stmt",
+		"Class      : Name *Token, Methods []FunctionStmt",
 		"Expression : Expression Expr",
 		"Function   : Name *Token, Params []*Token, Body []Stmt",
 		"If         : Condition Expr, ThenBranch Stmt, ElseBranch Stmt",

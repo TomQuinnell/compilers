@@ -46,8 +46,13 @@ func (p *Parser) Parse() ([]d.Stmt, error) {
 
 func (p *Parser) parseDeclaration() (d.Stmt, error) {
 	pFunc := p.parseStatement
+	if p.match(d.CLASS) {
+		return p.parseClassDeclaration()
+	}
 	if p.match(d.FUN) {
-		pFunc = p.parseFunction("function")
+		pFunc = func() (d.Stmt, error) {
+			return p.parseFunction("function")()
+		}
 	}
 	if p.match(d.VAR) {
 		pFunc = p.parseVarDeclaration
@@ -66,29 +71,61 @@ func (p *Parser) parseDeclaration() (d.Stmt, error) {
 	return nil, nil
 }
 
-func (p *Parser) parseFunction(kind string) func() (d.Stmt, error) {
-	return func() (d.Stmt, error) {
-		name, err := p.consume(d.IDENTIFIER, fmt.Sprintf("Expect %s name.", kind))
+func (p *Parser) parseClassDeclaration() (d.Stmt, error) {
+	name, err := p.consume(d.IDENTIFIER, "Expect class name")
+	if err != nil {
+		return nil, err
+	}
+	_, err = p.consume(d.LEFT_BRACE, "Expect '{' before class body.")
+	if err != nil {
+		return nil, err
+	}
+
+	methods := make([]d.FunctionStmt, 0)
+	for !p.check(d.RIGHT_BRACE) && !p.isAtEnd() {
+		parsedFn, err := p.parseFunction("method")()
 		if err != nil {
 			return nil, err
 		}
 
+		methods = append(methods, parsedFn)
+	}
+
+	_, err = p.consume(d.RIGHT_BRACE, "Expect '}' after class body.")
+	if err != nil {
+		return nil, err
+	}
+
+	return d.ClassStmt{
+		Name:    name,
+		Methods: methods,
+	}, nil
+}
+
+func (p *Parser) parseFunction(kind string) func() (d.FunctionStmt, error) {
+	nilFn := d.FunctionStmt{}
+	return func() (d.FunctionStmt, error) {
+		name, err := p.consume(d.IDENTIFIER, fmt.Sprintf("Expect %s name.", kind))
+		if err != nil {
+			return nilFn, err
+		}
+
 		_, err = p.consume(d.LEFT_PAREN, fmt.Sprintf("Expect '(' after %s name.", kind))
 		if err != nil {
-			return nil, err
+			return nilFn, err
 		}
 
 		params := make([]*d.Token, 0)
 		if !p.check(d.RIGHT_PAREN) {
 			paramV, err := p.consume(d.IDENTIFIER, "Expect parameter name")
 			if err != nil {
-				return nil, err
+				return nilFn, err
 			}
 			params = append(params, paramV)
 
 			for p.match(d.COMMA) {
 				if len(params) >= maxArgsSize {
-					return nil, ErrParse{
+					return nilFn, ErrParse{
 						message: fmt.Sprintf("Can't have more than %d params.", maxArgsSize),
 						token:   p.peek(),
 					}
@@ -96,7 +133,7 @@ func (p *Parser) parseFunction(kind string) func() (d.Stmt, error) {
 
 				paramV, err := p.consume(d.IDENTIFIER, "Expect parameter name")
 				if err != nil {
-					return nil, err
+					return nilFn, err
 				}
 				params = append(params, paramV)
 			}
@@ -104,17 +141,17 @@ func (p *Parser) parseFunction(kind string) func() (d.Stmt, error) {
 
 		_, err = p.consume(d.RIGHT_PAREN, "Expect ')' after paramters.")
 		if err != nil {
-			return nil, err
+			return nilFn, err
 		}
 
 		_, err = p.consume(d.LEFT_BRACE, fmt.Sprintf("Expect '{' before %s body.", kind))
 		if err != nil {
-			return nil, err
+			return nilFn, err
 		}
 
 		body, err := p.parseBlock()
 		if err != nil {
-			return nil, err
+			return nilFn, err
 		}
 
 		return d.FunctionStmt{
@@ -407,6 +444,12 @@ func (p *Parser) parseAssignment() (d.Expr, error) {
 				Name:  eqExprRaw.Name,
 				Value: value,
 			}, nil
+		case d.GetExpr:
+			return d.SetExpr{
+				Object: eqExprRaw.Object,
+				Name:   eqExprRaw.Name,
+				Value:  value,
+			}, nil
 		}
 
 		return nil, ErrParse{message: "Invalid assingment target.", token: eqToken}
@@ -577,6 +620,15 @@ func (p *Parser) parseCall() (d.Expr, error) {
 			if err != nil {
 				return nil, err
 			}
+		} else if p.match(d.DOT) {
+			name, err := p.consume(d.IDENTIFIER, "Expect property name after '.'.")
+			if err != nil {
+				return nil, err
+			}
+			expr = d.GetExpr{
+				Object: expr,
+				Name:   name,
+			}
 		} else {
 			break
 		}
@@ -643,6 +695,12 @@ func (p *Parser) parsePrimary() (d.Expr, error) {
 	if p.match(d.NUMBER, d.STRING) {
 		return d.LiteralExpr{
 			Value: p.previous().Literal,
+		}, nil
+	}
+
+	if p.match(d.THIS) {
+		return d.ThisExpr{
+			Keyword: p.previous(),
 		}, nil
 	}
 

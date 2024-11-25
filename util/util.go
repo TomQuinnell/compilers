@@ -112,6 +112,27 @@ func IsEqualExpr(e, o d.Expr) bool {
 				expected.Paren.Lexeme == other.Paren.Lexeme
 		}
 		return false
+	case d.GetExpr:
+		switch o.(type) {
+		case d.GetExpr:
+			expected, other := e.(d.GetExpr), o.(d.GetExpr)
+			return expected.Name.Lexeme == other.Name.Lexeme &&
+				IsEqualExpr(expected.Object, other.Object)
+		}
+	case d.SetExpr:
+		switch o.(type) {
+		case d.SetExpr:
+			expected, other := e.(d.SetExpr), o.(d.SetExpr)
+			return expected.Name.Lexeme == other.Name.Lexeme &&
+				IsEqualExpr(expected.Object, other.Object) &&
+				IsEqualExpr(expected.Value, other.Value)
+		}
+	case d.ThisExpr:
+		switch o.(type) {
+		case d.ThisExpr:
+			expected, other := e.(d.ThisExpr), o.(d.ThisExpr)
+			return expected.Keyword.Lexeme == other.Keyword.Lexeme
+		}
 	}
 
 	fmt.Printf("UNKNOWN EXPR TYPE %#v %#v\n", e, o)
@@ -204,6 +225,24 @@ func IsEqualStmt(s, o d.Stmt) bool {
 			expected, other := s.(d.ReturnStmt), o.(d.ReturnStmt)
 			return expected.Keyword.Lexeme == other.Keyword.Lexeme &&
 				IsEqualExpr(expected.Value, other.Value)
+		}
+		return false
+	case d.ClassStmt:
+		switch o.(type) {
+		case d.ClassStmt:
+			expected, other := s.(d.ClassStmt), o.(d.ClassStmt)
+			if expected.Name.Lexeme != other.Name.Lexeme {
+				return false
+			}
+			if len(expected.Methods) != len(other.Methods) {
+				return false
+			}
+			for i := range expected.Methods {
+				if !IsEqualStmt(expected.Methods[i], other.Methods[i]) {
+					return false
+				}
+			}
+			return true
 		}
 		return false
 	}

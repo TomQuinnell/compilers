@@ -15,12 +15,15 @@ type Callable interface {
 type Func struct {
 	declaration d.FunctionStmt
 	closure     *env.Environment
+
+	isInitializer bool
 }
 
-func newFunc(declaration d.FunctionStmt, closure *env.Environment) Func {
+func newFunc(declaration d.FunctionStmt, closure *env.Environment, isInitializer bool) Func {
 	return Func{
-		declaration: declaration,
-		closure:     closure,
+		declaration:   declaration,
+		closure:       closure,
+		isInitializer: isInitializer,
 	}
 }
 
@@ -30,10 +33,21 @@ func (f Func) Arity() int {
 	return len(f.declaration.Params)
 }
 
-func (f Func) Call(in *Interpreter, args []interface{}) (returnVal interface{}, err error) {
+func (f Func) Call(in *Interpreter, args []interface{}) (returnVal interface{}, retErr error) {
 	defer func() {
 		if err := recover(); err != nil {
 			if v, ok := err.(ReturnVal); ok {
+				if f.isInitializer {
+					v, err := f.closure.GetAt(0, "this")
+					if err != nil {
+						retErr = err
+						return
+					}
+
+					returnVal = v
+					return
+				}
+
 				returnVal = v.Value
 				return
 			}
@@ -48,12 +62,22 @@ func (f Func) Call(in *Interpreter, args []interface{}) (returnVal interface{}, 
 		fnEnv.Define(f.declaration.Params[i].Lexeme, args[i])
 	}
 
-	err = in.executeBlock(f.declaration.Body, fnEnv)
+	err := in.executeBlock(f.declaration.Body, fnEnv)
 	if err != nil {
 		return nil, err
 	}
 
+	if f.isInitializer {
+		return f.closure.GetAt(0, "this")
+	}
+
 	return nil, nil
+}
+
+func (f Func) Bind(instance Instance) Func {
+	e := env.NewEnv(f.closure)
+	e.Define("this", instance)
+	return newFunc(f.declaration, e, f.isInitializer)
 }
 
 func (f Func) String() string {

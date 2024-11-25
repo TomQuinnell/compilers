@@ -19,6 +19,18 @@ func (p *AstPrinter) Print(expr d.Expr) interface{} {
 	return v
 }
 
+func (p *AstPrinter) VisitGetExpr(expr d.GetExpr) (interface{}, error) {
+	return p.parenthesize("Get: "+expr.Name.Lexeme, expr.Object), nil
+}
+
+func (p *AstPrinter) VisitSetExpr(expr d.SetExpr) (interface{}, error) {
+	return p.parenthesize("Set: "+expr.Name.Lexeme, expr.Object), nil
+}
+
+func (p *AstPrinter) VisitThisExpr(expr d.ThisExpr) (interface{}, error) {
+	return "This: " + expr.Keyword.Lexeme, nil
+}
+
 func (p *AstPrinter) VisitAssignExpr(expr d.AssignExpr) (interface{}, error) {
 	v, err := expr.Value.Accept(p)
 	if err != nil {

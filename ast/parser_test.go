@@ -289,6 +289,81 @@ func TestParse(t *testing.T) {
 		assert.True(util.IsEqualStmt(d.BlockStmt{Stmts: expectedStmts}, st))
 	})
 
+	classToken := d.NewToken(d.CLASS, "class", nil, 0)
+	initToken := d.NewToken(d.IDENTIFIER, "init", nil, 0)
+	radiusToken := d.NewToken(d.IDENTIFIER, "radius", nil, 0)
+	getRadiusToken := d.NewToken(d.IDENTIFIER, "getRadius", nil, 0)
+	thisToken := d.NewToken(d.THIS, "this", nil, 0)
+	dotToken := d.NewToken(d.DOT, ".", nil, 0)
+
+	t.Run("Parses class block", func(t *testing.T) {
+		assert := assert.New(t)
+
+		rawTokens := []*d.Token{
+			classToken, vToken, openBlockToken,
+			initToken, openBracket, radiusToken, closeBracket, openBlockToken,
+			thisToken, dotToken, radiusToken, eqToken, radiusToken, semicolon,
+			closeBlockToken,
+
+			getRadiusToken, openBracket, closeBracket, openBlockToken,
+			returnToken, thisToken, dotToken, radiusToken, semicolon,
+			closeBlockToken,
+
+			closeBlockToken,
+
+			vToken, openBracket, one, closeBracket, dotToken, getRadiusToken, openBracket, closeBracket, semicolon,
+		}
+
+		stmts, err := NewParser(rawTokens).Parse()
+		assert.NoError(err)
+
+		assert.Len(stmts, 2)
+		st1 := stmts[0]
+
+		expectedStmt1 := d.ClassStmt{
+			Name: vToken,
+			Methods: []d.FunctionStmt{
+				{
+					Name:   initToken,
+					Params: []*d.Token{radiusToken},
+					Body: []d.Stmt{d.ExpressionStmt{Expression: d.SetExpr{
+						Object: d.ThisExpr{Keyword: thisToken},
+						Name:   radiusToken,
+						Value:  d.VariableExpr{Name: radiusToken},
+					}}},
+				},
+				{
+					Name:   getRadiusToken,
+					Params: []*d.Token{},
+					Body: []d.Stmt{d.ReturnStmt{
+						Keyword: returnToken,
+						Value: d.GetExpr{
+							Object: d.ThisExpr{Keyword: thisToken},
+							Name:   radiusToken,
+						},
+					}},
+				},
+			},
+		}
+		assert.True(util.IsEqualStmt(expectedStmt1, st1))
+
+		st2 := stmts[1]
+
+		expectedStmt2 := d.ExpressionStmt{Expression: d.CallExpr{
+			Callee: d.GetExpr{
+				Object: d.CallExpr{
+					Callee: d.VariableExpr{Name: vToken},
+					Paren:  closeBracket,
+					Args:   []d.Expr{d.LiteralExpr{Value: 1}},
+				},
+				Name: getRadiusToken,
+			},
+			Paren: closeBracket,
+			Args:  []d.Expr{},
+		}}
+		assert.True(util.IsEqualStmt(expectedStmt2, st2))
+	})
+
 	t.Run("Parses function call", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -341,6 +416,10 @@ func TestParse(t *testing.T) {
 		{[]*d.Token{fnToken, vToken, openBracketToken, v1Token, commaToken}, nil},
 		{[]*d.Token{fnToken, vToken, openBracketToken}, nil},
 		{[]*d.Token{fnToken, vToken, openBracketToken, closeBracket, returnToken}, nil},
+		{[]*d.Token{classToken}, nil},
+		{[]*d.Token{classToken, vToken}, nil},
+		{[]*d.Token{classToken, vToken, openBlockToken}, nil},
+		{[]*d.Token{classToken, vToken, openBlockToken, closeBlockToken, vToken, dotToken}, nil},
 	}
 
 	for _, c := range errTestCases {

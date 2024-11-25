@@ -173,6 +173,10 @@ func TestInterpret(t *testing.T) {
 	eqeqToken := d.NewToken(d.EQUAL_EQUAL, "==", nil, 0)
 	returnToken := d.NewToken(d.RETURN, "return", nil, 0)
 	closeBracketToken := d.NewToken(d.RIGHT_PAREN, ")", nil, 0)
+	initToken := d.NewToken(d.IDENTIFIER, "init", nil, 0)
+	radiusToken := d.NewToken(d.IDENTIFIER, "radius", nil, 0)
+	getRadiusToken := d.NewToken(d.IDENTIFIER, "getRadius", nil, 0)
+	thisToken := d.NewToken(d.THIS, "this", nil, 0)
 
 	testStmtCases := []InterpretStmtTestCase{
 		{d.PrintStmt{Expression: one}},
@@ -229,6 +233,45 @@ func TestInterpret(t *testing.T) {
 					Args:   []d.Expr{d.LiteralExpr{Value: 1}, d.LiteralExpr{Value: 1}},
 				},
 			},
+		}}},
+		{d.BlockStmt{Stmts: []d.Stmt{
+			d.ClassStmt{
+				Name: vToken,
+				Methods: []d.FunctionStmt{
+					{
+						Name:   initToken,
+						Params: []*d.Token{radiusToken},
+						Body: []d.Stmt{d.ExpressionStmt{Expression: d.SetExpr{
+							Object: d.ThisExpr{Keyword: thisToken},
+							Name:   radiusToken,
+							Value:  d.VariableExpr{Name: radiusToken},
+						}}},
+					},
+					{
+						Name:   getRadiusToken,
+						Params: []*d.Token{},
+						Body: []d.Stmt{d.ReturnStmt{
+							Keyword: returnToken,
+							Value: d.GetExpr{
+								Object: d.ThisExpr{Keyword: thisToken},
+								Name:   radiusToken,
+							},
+						}},
+					},
+				},
+			},
+			d.ExpressionStmt{Expression: d.CallExpr{
+				Callee: d.GetExpr{
+					Object: d.CallExpr{
+						Callee: d.VariableExpr{Name: vToken},
+						Paren:  closeBracketToken,
+						Args:   []d.Expr{d.LiteralExpr{Value: 1}},
+					},
+					Name: getRadiusToken,
+				},
+				Paren: closeBracketToken,
+				Args:  []d.Expr{},
+			}},
 		}}},
 	}
 

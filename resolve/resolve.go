@@ -6,6 +6,13 @@ import (
 	"fmt"
 )
 
+type ClassType = int32
+
+const (
+	ClassType_None = iota
+	ClassType_Class
+)
+
 type ErrResolve struct {
 	message string
 	token   *d.Token
@@ -32,16 +39,18 @@ func newScope() scope {
 }
 
 type Resolver struct {
-	interpreter *eval.Interpreter
-	scopes      []scope
-	currentFunc d.FunctionType
+	interpreter  *eval.Interpreter
+	scopes       []scope
+	currentFunc  d.FunctionType
+	currentClass ClassType
 }
 
 func NewResolver(interpreter *eval.Interpreter) *Resolver {
 	return &Resolver{
-		interpreter: interpreter,
-		scopes:      make([]scope, 0),
-		currentFunc: d.FUNCTION_TYPE_NONE,
+		interpreter:  interpreter,
+		scopes:       make([]scope, 0),
+		currentFunc:  d.FUNCTION_TYPE_NONE,
+		currentClass: ClassType_None,
 	}
 }
 
@@ -189,6 +198,51 @@ func (r *Resolver) VisitFunctionStmt(stmt d.FunctionStmt) error {
 	return nil
 }
 
+func (r *Resolver) VisitClassStmt(stmt d.ClassStmt) error {
+	enclosingClass := r.currentClass
+	r.currentClass = ClassType_Class
+
+	err := r.declare(stmt.Name)
+	if err != nil {
+		return err
+	}
+	r.define(stmt.Name)
+
+	r.beginScope()
+	r.peekScope()["this"] = true
+
+	for _, method := range stmt.Methods {
+		declaration := d.FUNCTION_TYPE_METHOD
+		if method.Name.Lexeme == "init" {
+			declaration = d.FUNCTION_TYPE_INITIALIZER
+		}
+
+		err = r.resolveFunction(method, declaration)
+		if err != nil {
+			return err
+		}
+	}
+
+	r.endScope()
+
+	r.currentClass = enclosingClass
+
+	return nil
+}
+
+func (r *Resolver) VisitThisExpr(expr d.ThisExpr) (interface{}, error) {
+	if r.currentClass == ClassType_None {
+		return nil, newErrResolve(expr.Keyword, "Can't use 'this' outside of a class.")
+	}
+
+	err := r.resolveLocal(expr, expr.Keyword)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 func (r *Resolver) resolveFunction(f d.FunctionStmt, fnType d.FunctionType) error {
 	enclosingFnType := r.currentFunc
 	r.currentFunc = fnType
@@ -242,6 +296,9 @@ func (r *Resolver) VisitReturnStmt(stmt d.ReturnStmt) error {
 		return newErrResolve(stmt.Keyword, "can't return from top-level code")
 	}
 	if stmt.Value != nil {
+		if r.currentFunc == d.FUNCTION_TYPE_INITIALIZER {
+			return newErrResolve(stmt.Keyword, "Can't return a value from an init.")
+		}
 		return r.resolveExpr(stmt.Value)
 	}
 
@@ -284,6 +341,24 @@ func (r *Resolver) VisitCallExpr(expr d.CallExpr) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	return nil, nil
+}
+
+func (r *Resolver) VisitGetExpr(expr d.GetExpr) (interface{}, error) {
+	err := r.resolveExpr(expr.Object)
+	return nil, err
+}
+
+func (r *Resolver) VisitSetExpr(expr d.SetExpr) (interface{}, error) {
+	err := r.resolveExpr(expr.Value)
+	if err != nil {
+		return nil, err
+	}
+	err = r.resolveExpr(expr.Object)
+	if err != nil {
+		return nil, err
 	}
 
 	return nil, nil

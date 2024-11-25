@@ -95,11 +95,13 @@ const (
 	EOF
 )
 
-type FunctionType int
+type FunctionType uint32
 
 const (
-	FUNCTION_TYPE_NONE = iota
+	FUNCTION_TYPE_NONE FunctionType = iota
 	FUNCTION_TYPE_FN
+	FUNCTION_TYPE_INITIALIZER
+	FUNCTION_TYPE_METHOD
 )
 
 func (t TokenType) String() string {
