@@ -289,12 +289,55 @@ func TestParse(t *testing.T) {
 		assert.True(util.IsEqualStmt(d.BlockStmt{Stmts: expectedStmts}, st))
 	})
 
+	lessThanToken := d.NewToken(d.LESS, "<", nil, 0)
+	superToken := d.NewToken(d.SUPER, "super", nil, 0)
+	superClassToken := d.NewToken(d.IDENTIFIER, "superclassname", nil, 0)
 	classToken := d.NewToken(d.CLASS, "class", nil, 0)
 	initToken := d.NewToken(d.IDENTIFIER, "init", nil, 0)
 	radiusToken := d.NewToken(d.IDENTIFIER, "radius", nil, 0)
 	getRadiusToken := d.NewToken(d.IDENTIFIER, "getRadius", nil, 0)
 	thisToken := d.NewToken(d.THIS, "this", nil, 0)
 	dotToken := d.NewToken(d.DOT, ".", nil, 0)
+
+	t.Run("Parses superclass", func(t *testing.T) {
+		assert := assert.New(t)
+
+		rawTokens := []*d.Token{
+			classToken, vToken, lessThanToken, superClassToken, openBlockToken,
+
+			getRadiusToken, openBracket, closeBracket, openBlockToken,
+			returnToken, superToken, dotToken, getRadiusToken, semicolon,
+			closeBlockToken,
+
+			closeBlockToken,
+		}
+
+		stmts, err := NewParser(rawTokens).Parse()
+		assert.NoError(err)
+
+		assert.Len(stmts, 1)
+		st := stmts[0]
+
+		expectedStmt := d.ClassStmt{
+			Name: vToken,
+			SuperClass: &d.VariableExpr{
+				Name: superClassToken,
+			},
+			Methods: []d.FunctionStmt{
+				{
+					Name:   getRadiusToken,
+					Params: []*d.Token{},
+					Body: []d.Stmt{d.ReturnStmt{
+						Keyword: returnToken,
+						Value: d.SuperExpr{
+							Keyword: superToken,
+							Method:  getRadiusToken,
+						},
+					}},
+				}},
+		}
+		assert.True(util.IsEqualStmt(expectedStmt, st))
+	})
 
 	t.Run("Parses class block", func(t *testing.T) {
 		assert := assert.New(t)
@@ -321,7 +364,8 @@ func TestParse(t *testing.T) {
 		st1 := stmts[0]
 
 		expectedStmt1 := d.ClassStmt{
-			Name: vToken,
+			Name:       vToken,
+			SuperClass: nil,
 			Methods: []d.FunctionStmt{
 				{
 					Name:   initToken,
@@ -420,6 +464,8 @@ func TestParse(t *testing.T) {
 		{[]*d.Token{classToken, vToken}, nil},
 		{[]*d.Token{classToken, vToken, openBlockToken}, nil},
 		{[]*d.Token{classToken, vToken, openBlockToken, closeBlockToken, vToken, dotToken}, nil},
+		{[]*d.Token{superToken}, nil},
+		{[]*d.Token{superToken, dotToken}, nil},
 	}
 
 	for _, c := range errTestCases {

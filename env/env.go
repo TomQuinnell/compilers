@@ -17,6 +17,13 @@ func NewEnv(enclosing *Environment) *Environment {
 	}
 }
 
+func (e *Environment) GetEnclosing() *Environment {
+	if e == nil {
+		return nil
+	}
+	return e.enclosing
+}
+
 func (e *Environment) Define(name string, value interface{}) {
 	e.values[name] = value
 }

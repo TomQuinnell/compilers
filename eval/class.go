@@ -24,14 +24,16 @@ func newErrClass(t *d.Token, msg string) ErrClass {
 var _ Callable = (*Class)(nil)
 
 type Class struct {
-	name    string
-	methods map[string]Func
+	name       string
+	superclass *Class
+	methods    map[string]Func
 }
 
-func newClass(name string, methods map[string]Func) *Class {
+func newClass(name string, superclass *Class, methods map[string]Func) *Class {
 	return &Class{
-		name:    name,
-		methods: methods,
+		name:       name,
+		superclass: superclass,
+		methods:    methods,
 	}
 }
 
@@ -61,6 +63,10 @@ func (c *Class) Arity() int {
 func (c *Class) FindMethod(name string) *Func {
 	if m, ok := c.methods[name]; ok {
 		return &m
+	}
+
+	if c.superclass != nil {
+		return c.superclass.FindMethod(name)
 	}
 
 	return nil

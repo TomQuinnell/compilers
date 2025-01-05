@@ -19,6 +19,43 @@ func TestResolve(t *testing.T) {
 	returnToken := d.NewToken(d.RETURN, "return", nil, 0)
 
 	testCases := []ResolveTestCase{
+		// Inherit from iteself
+		{[]d.Stmt{
+			d.ClassStmt{
+				Name: vToken,
+				SuperClass: &d.VariableExpr{
+					Name: vToken,
+				},
+				Methods: []d.FunctionStmt{},
+			},
+		}},
+		// Super outside of class
+		{[]d.Stmt{
+			d.ExpressionStmt{
+				Expression: d.SuperExpr{
+					Keyword: vToken,
+					Method:  radiusToken,
+				},
+			}},
+		},
+		// Super in a non-subclass
+		{[]d.Stmt{
+			d.ClassStmt{
+				Name:       vToken,
+				SuperClass: nil,
+				Methods: []d.FunctionStmt{{
+					Name:   radiusToken,
+					Params: []*d.Token{},
+					Body: []d.Stmt{
+						d.ExpressionStmt{
+							Expression: d.SuperExpr{
+								Keyword: vToken,
+								Method:  radiusToken,
+							},
+						}},
+				}},
+			},
+		}},
 		// Own local var in initializer
 		{[]d.Stmt{
 			d.VarStmt{

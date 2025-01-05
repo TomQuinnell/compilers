@@ -273,6 +273,28 @@ func TestInterpret(t *testing.T) {
 				Args:  []d.Expr{},
 			}},
 		}}},
+		{d.BlockStmt{Stmts: []d.Stmt{
+			d.ClassStmt{Name: v1Token, SuperClass: nil, Methods: []d.FunctionStmt{{
+				Name:   d.NewToken(d.IDENTIFIER, "getRadius", nil, 0),
+				Params: []*d.Token{},
+				Body: []d.Stmt{
+					d.ReturnStmt{
+						Keyword: d.NewToken(d.RETURN, "return", nil, 0),
+						Value:   d.LiteralExpr{Value: 420},
+					},
+				},
+			}}},
+			d.ClassStmt{Name: v2Token, SuperClass: &d.VariableExpr{Name: v1Token}, Methods: []d.FunctionStmt{{
+				Name:   d.NewToken(d.IDENTIFIER, "get", nil, 0),
+				Params: []*d.Token{},
+				Body: []d.Stmt{d.ExpressionStmt{
+					Expression: d.SuperExpr{
+						Keyword: d.NewToken(d.SUPER, "super", nil, 0),
+						Method:  d.NewToken(d.IDENTIFIER, "getRadius", nil, 0),
+					}},
+				},
+			}}},
+		}}},
 	}
 
 	for _, c := range testStmtCases {
@@ -376,6 +398,36 @@ func TestInterpret(t *testing.T) {
 		// {d.PrintStmt{Expression: d.VariableExpr{Name: vToken}}},
 		{d.IfStmt{Condition: minStr, ThenBranch: d.ExpressionStmt{Expression: d.LiteralExpr{Value: 1}}}},
 		{d.WhileStmt{Condition: minStr, Body: d.ExpressionStmt{Expression: d.LiteralExpr{Value: 1}}}},
+		{d.BlockStmt{Stmts: []d.Stmt{
+			d.VarStmt{Name: v1Token, Initializer: a},
+			d.ClassStmt{Name: v2Token, SuperClass: &d.VariableExpr{Name: v1Token}, Methods: []d.FunctionStmt{}},
+		}}},
+		{d.BlockStmt{Stmts: []d.Stmt{
+			d.ClassStmt{Name: v1Token, SuperClass: nil, Methods: []d.FunctionStmt{}},
+			d.ClassStmt{Name: v2Token, SuperClass: &d.VariableExpr{Name: v1Token}, Methods: []d.FunctionStmt{{
+				Name:   d.NewToken(d.IDENTIFIER, "get", nil, 0),
+				Params: []*d.Token{},
+				Body: []d.Stmt{d.ReturnStmt{
+					Keyword: returnToken,
+					Value: d.SuperExpr{
+						Keyword: d.NewToken(d.SUPER, "super", nil, 0),
+						Method:  d.NewToken(d.IDENTIFIER, "nope", nil, 0),
+					}},
+				},
+			}}},
+			d.ExpressionStmt{Expression: d.CallExpr{
+				Callee: d.GetExpr{
+					Object: d.CallExpr{
+						Callee: d.VariableExpr{Name: v2Token},
+						Paren:  closeBracketToken,
+						Args:   []d.Expr{},
+					},
+					Name: getRadiusToken,
+				},
+				Paren: closeBracketToken,
+				Args:  []d.Expr{},
+			}},
+		}}},
 	}
 
 	for _, c := range errTestStmtCases {

@@ -133,6 +133,13 @@ func IsEqualExpr(e, o d.Expr) bool {
 			expected, other := e.(d.ThisExpr), o.(d.ThisExpr)
 			return expected.Keyword.Lexeme == other.Keyword.Lexeme
 		}
+	case d.SuperExpr:
+		switch o.(type) {
+		case d.SuperExpr:
+			expected, other := e.(d.SuperExpr), o.(d.SuperExpr)
+			return expected.Keyword.Lexeme == other.Keyword.Lexeme &&
+				expected.Method.Lexeme == other.Method.Lexeme
+		}
 	}
 
 	fmt.Printf("UNKNOWN EXPR TYPE %#v %#v\n", e, o)

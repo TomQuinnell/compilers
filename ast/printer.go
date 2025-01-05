@@ -19,6 +19,10 @@ func (p *AstPrinter) Print(expr d.Expr) interface{} {
 	return v
 }
 
+func (p *AstPrinter) VisitSuperExpr(expr d.SuperExpr) (interface{}, error) {
+	return "Super: " + expr.Keyword.Lexeme + expr.Method.Lexeme, nil
+}
+
 func (p *AstPrinter) VisitGetExpr(expr d.GetExpr) (interface{}, error) {
 	return p.parenthesize("Get: "+expr.Name.Lexeme, expr.Object), nil
 }

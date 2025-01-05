@@ -21,6 +21,7 @@ func main() {
 		"Literal  : Value interface{}",
 		"Logical  : Left Expr, Operator *Token, Right Expr",
 		"Set      : Object Expr, Name *Token, Value Expr",
+		"Super    : Keyword *Token, Method *Token",
 		"This     : Keyword *Token",
 		"Grouping : Expression Expr",
 		"Variable : Name *Token",
@@ -28,7 +29,7 @@ func main() {
 
 	writeAst("Stmt", []string{
 		"Block      : Stmts []Stmt",
-		"Class      : Name *Token, Methods []FunctionStmt",
+		"Class      : Name *Token, SuperClass *VariableExpr, Methods []FunctionStmt",
 		"Expression : Expression Expr",
 		"Function   : Name *Token, Params []*Token, Body []Stmt",
 		"If         : Condition Expr, ThenBranch Stmt, ElseBranch Stmt",

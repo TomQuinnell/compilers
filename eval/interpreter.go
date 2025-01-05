@@ -72,17 +72,63 @@ func (i *Interpreter) VisitExpressionStmt(s d.ExpressionStmt) error {
 }
 
 func (i *Interpreter) VisitClassStmt(s d.ClassStmt) error {
+	var superclass *Class
+	if s.SuperClass != nil {
+		sc, err := i.evaluate(s.SuperClass)
+		if err != nil {
+			return err
+		}
+
+		if clz, ok := sc.(*Class); ok {
+			superclass = clz
+		} else {
+			return newErrInterpret(s.SuperClass.Name, "Superclass must be a class")
+		}
+	}
+
 	i.env.Define(s.Name.Lexeme, nil)
+
+	if s.SuperClass != nil {
+		i.env = env.NewEnv(i.env)
+		i.env.Define("super", superclass)
+	}
 
 	methods := make(map[string]Func)
 	for _, method := range s.Methods {
 		methods[method.Name.Lexeme] = newFunc(method, i.env, method.Name.Lexeme == "init")
 	}
 
-	klass := newClass(s.Name.Lexeme, methods)
+	klass := newClass(s.Name.Lexeme, superclass, methods)
+
+	if s.SuperClass != nil {
+		i.env = i.env.GetEnclosing()
+	}
 
 	i.env.Assign(s.Name, klass)
 	return nil
+}
+
+func (i *Interpreter) VisitSuperExpr(expr d.SuperExpr) (interface{}, error) {
+	distance := i.locals[expr]
+	superclassRaw, err := i.env.GetAt(distance, "super")
+	if err != nil {
+		return nil, err
+	}
+	superclass := superclassRaw.(Class)
+
+	instanceRaw, err := i.env.GetAt(distance-1, "this")
+	if err != nil {
+		return nil, err
+	}
+	instance := instanceRaw.(Instance)
+
+	method := superclass.FindMethod(expr.Method.Lexeme)
+
+	if method == nil {
+		return nil, newErrInterpret(expr.Method, fmt.Sprintf("Undefined property '%s'.", expr.Method.Lexeme))
+	}
+
+	return method.Bind(instance), nil
 }
 
 func (i *Interpreter) VisitFunctionStmt(s d.FunctionStmt) error {

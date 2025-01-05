@@ -11,6 +11,7 @@ type ClassType = int32
 const (
 	ClassType_None = iota
 	ClassType_Class
+	ClassType_SubClass
 )
 
 type ErrResolve struct {
@@ -208,6 +209,23 @@ func (r *Resolver) VisitClassStmt(stmt d.ClassStmt) error {
 	}
 	r.define(stmt.Name)
 
+	if stmt.SuperClass != nil && stmt.Name.Lexeme == stmt.SuperClass.Name.Lexeme {
+		return newErrResolve(stmt.SuperClass.Name, "A class can't inherit from itself")
+	}
+
+	if stmt.SuperClass != nil {
+		r.currentClass = ClassType_SubClass
+		err := r.resolveExpr(stmt.SuperClass)
+		if err != nil {
+			return err
+		}
+	}
+
+	if stmt.SuperClass != nil {
+		r.beginScope()
+		r.peekScope()["super"] = true
+	}
+
 	r.beginScope()
 	r.peekScope()["this"] = true
 
@@ -225,9 +243,29 @@ func (r *Resolver) VisitClassStmt(stmt d.ClassStmt) error {
 
 	r.endScope()
 
+	if stmt.SuperClass != nil {
+		r.endScope()
+	}
+
 	r.currentClass = enclosingClass
 
 	return nil
+}
+
+func (r *Resolver) VisitSuperExpr(expr d.SuperExpr) (interface{}, error) {
+	if r.currentClass == ClassType_None {
+		return nil, newErrResolve(expr.Keyword, "Can't use 'super' outside of a class.")
+	}
+	if r.currentClass != ClassType_SubClass {
+		return nil, newErrResolve(expr.Keyword, "Can't use 'super' in a class with no superclass.")
+	}
+
+	err := r.resolveLocal(expr, expr.Keyword)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func (r *Resolver) VisitThisExpr(expr d.ThisExpr) (interface{}, error) {
