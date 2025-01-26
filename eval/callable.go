@@ -99,3 +99,29 @@ func (cb ClockCallable) Call(in *Interpreter, args []interface{}) (interface{}, 
 func (cb ClockCallable) String() string {
 	return "<clock native fn>"
 }
+
+// Extension for getting user input
+
+type InputCallable struct{}
+
+var _ Callable = (*InputCallable)(nil)
+
+func (cb InputCallable) Arity() int {
+	return 1
+}
+
+func (cb InputCallable) Call(in *Interpreter, args []interface{}) (interface{}, error) {
+	fmt.Println(args[0])
+
+	var ret string
+	_, err := fmt.Scan(&ret)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
+func (cb InputCallable) String() string {
+	return "<input native fn>"
+}

@@ -151,8 +151,10 @@ func (r *Resolver) define(name *d.Token) {
 }
 
 func (r *Resolver) VisitVariableExpr(expr d.VariableExpr) (interface{}, error) {
-	if exists, ok := r.getFromScope(expr.Name); !ok || !exists {
-		return nil, newErrResolve(expr.Name, "can't read local var in own initializer")
+	if len(r.scopes) > 0 {
+		if exists, ok := r.getFromScope(expr.Name); !ok || !exists {
+			return nil, newErrResolve(expr.Name, "can't read local var in own initializer")
+		}
 	}
 
 	r.resolveLocal(expr, expr.Name)

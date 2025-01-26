@@ -36,6 +36,7 @@ type Interpreter struct {
 func NewInterpreter() *Interpreter {
 	globals := env.NewEnv(nil)
 	globals.Define("clock", ClockCallable{})
+	globals.Define("input", InputCallable{})
 
 	return &Interpreter{
 		env:     globals,
