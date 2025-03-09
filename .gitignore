@@ -1,2 +1,3 @@
 domain/expr.go
 domain/stmt.go
+settings.json
