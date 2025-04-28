@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(Hello)
-set(SOURCE_FILES main.c chunk.h chunk.c common.h  compiler.h compiler.c debug.h debug.c memory.h memory.c scanner.h scanner.c value.h value.c vm.h vm.c)
+set(SOURCE_FILES main.c chunk.h chunk.c common.h  compiler.h compiler.c debug.h debug.c memory.h memory.c object.h object.c scanner.h scanner.c value.h value.c vm.h vm.c)
 add_executable(Hello ${SOURCE_FILES})
 # add_executable(ll_test ll_test.c)
 # target_link_libraries(ll_test PRIVATE ll)
